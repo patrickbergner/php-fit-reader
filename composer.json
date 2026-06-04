@@ -1,0 +1,52 @@
+{
+    "name": "emontis/fit-reader",
+    "description": "PHP library for reading Garmin FIT activity files",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "activity",
+        "csv",
+        "cycling",
+        "fit",
+        "fitness",
+        "garmin",
+        "gps",
+        "gpx",
+        "kml",
+        "php",
+        "running",
+        "tcx",
+        "track",
+        "tracking",
+        "training"
+    ],
+    "homepage": "https://github.com/patrickbergner/php-fit-reader",
+    "authors": [
+        {
+            "name": "Patrick Bergner",
+            "homepage": "https://github.com/patrickbergner",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13"
+    },
+    "autoload": {
+        "psr-4": {
+            "Emontis\\FitReader\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Emontis\\FitReader\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/generate-default-samples",
+        "bin/generate-profile"
+    ],
+    "minimum-stability": "stable"
+}

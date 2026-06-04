@@ -1,0 +1,14 @@
+──────────────────────────────────────────────────────────────────────
+10 · CSV export — raw, normalized, and as a string
+──────────────────────────────────────────────────────────────────────
+
+raw CSV        → tiergarten-raw.csv (575343 bytes)
+normalized CSV → tiergarten-normalized.csv (557931 bytes)
+
+activityToCsvString(): 4179 data rows.
+
+  header: session_index,timestamp,altitude,cadence,distance,enhanced_respiration_rate,fractional_cadence,gps_accuracy,heart_rate,position,position_lat,position_long,power,speed,stance_time,stance_time_percent,step_length,temperature,vertical_oscillation,vertical_ratio
+  row 1:  0,2026-01-15T09:00:00+00:00,34,166,0,23,0,4,123,"52.516300007701,13.377700019628",52.516300007701,13.377700019628,222,2.6,238,33.2,939.8,12,86.8,9.19
+
+semicolon CSV  → tiergarten-semicolon.csv (554353 bytes)
+  header: session_index;timestamp;altitude;cadence;distance;enhanced_respiration_rate;fractional_cadence;gps_accuracy;heart_rate;position;position_lat;position_long;power;speed;stance_time;stance_time_percent;step_length;temperature;vertical_oscillation;vertical_ratio

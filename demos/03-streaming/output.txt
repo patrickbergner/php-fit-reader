@@ -1,0 +1,16 @@
+──────────────────────────────────────────────────────────────────────
+03 · Streaming — low-memory message iteration
+──────────────────────────────────────────────────────────────────────
+
+Message counts by type:
+  record           4179
+  lap                12
+  device_info         3
+  event               2
+  file_id             1
+  file_creator        1
+  session             1
+  activity            1
+
+First record heart rate: 123 bpm
+Peak memory: 6 MB

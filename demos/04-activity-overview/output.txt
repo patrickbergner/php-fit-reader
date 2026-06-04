@@ -1,0 +1,19 @@
+──────────────────────────────────────────────────────────────────────
+04 · Activity overview — metadata, devices, events
+──────────────────────────────────────────────────────────────────────
+
+Manufacturer: garmin
+Created:      2026-01-15T09:00:00+00:00
+Sessions:     1
+Total timer:  60 min
+
+Device-info messages: 3
+  manufacturer=garmin product=1234 battery=—
+  manufacturer=garmin product=2697 battery=88
+  manufacturer=garmin product=3287 battery=76
+
+Events: 2
+  09:00:00  timer / start
+  09:59:38  timer / stop_all
+
+Raw activity summary keys: total_timer_time, num_sessions, type, event, event_type, timestamp

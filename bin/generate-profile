@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Reads Garmin's Profile.xlsx and emits the generated profile data the
+ * library reads at runtime.
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Emontis\FitReader\Codegen\ProfileGenerator;
+
+$root = dirname(__DIR__);
+$xlsx = $argv[1] ?? ($root . '/resources/Profile.xlsx');
+
+if (!is_file($xlsx)) {
+    fwrite(STDERR, "Profile.xlsx not found at: {$xlsx}\n");
+    exit(1);
+}
+
+if (!extension_loaded('zip')) {
+    fwrite(STDERR, "ext-zip is required. Run with:  php -d extension=zip bin/generate-profile\n");
+    exit(1);
+}
+
+$outDir = $root . '/src/Profile/Generated';
+if (!is_dir($outDir) && !mkdir($outDir, 0755, true) && !is_dir($outDir)) {
+    fwrite(STDERR, "Cannot create {$outDir}\n");
+    exit(1);
+}
+
+echo "Reading {$xlsx}\n";
+$gen = new ProfileGenerator($xlsx);
+$gen->generate($outDir);
+
+echo "Wrote {$outDir}/MessageDefinitions.php\n";
+echo "Wrote {$outDir}/Types.php\n";

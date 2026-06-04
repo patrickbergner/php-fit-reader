@@ -1,0 +1,84 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Regenerate samples/default/*.fit from Scenarios::*.
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Emontis\FitReader\Tests\Support\SyntheticFit\Scenarios;
+
+$map = [
+    'casualWalk'              => 'casual-walk',
+    'commuteWithAutopause'    => 'commute-with-autopause',
+    'ebikeBattery'            => 'ebike-battery',
+    'gravelSmartRecording'    => 'gravel-smart-recording',
+    'indoorBikeTrainer'       => 'indoor-bike-trainer',
+    'intervalRunLaps'         => 'interval-run-laps',
+    'kayakPaddle'             => 'kayak-paddle',
+    'mountainHikeRests'       => 'mountain-hike-rests',
+    'mtbWithJitter'           => 'mtb-with-jitter',
+    'multiHourEndurance'      => 'multi-hour-endurance',
+    'multisportDuathlon'      => 'multisport-duathlon',
+    'multisportTriathlon'     => 'multisport-triathlon',
+    'noSessionAggregates'     => 'no-session-aggregates',
+    'openWaterSwim'           => 'open-water-swim',
+    'outdoorRunClean'         => 'outdoor-run-clean',
+    'outdoorRunFragmented'    => 'outdoor-run-fragmented',
+    'pausedLongGap'           => 'paused-long-gap',
+    'poolSwimLaps'            => 'pool-swim-laps',
+    'roadBikePower'           => 'road-bike-power',
+    'rowingIndoor'            => 'rowing-indoor',
+    'strengthTraining'        => 'strength-training',
+    'tiergartenRun'           => 'tiergarten-run',
+    'trailRunElevation'       => 'trail-run-elevation',
+    'treadmillRun'            => 'treadmill-run',
+    'veryShort'               => 'very-short',
+    'walkWithDropouts'        => 'walk-with-dropouts',
+    'xcSki'                   => 'xc-ski',
+];
+
+$outDir = dirname(__DIR__) . '/samples/default';
+if (!is_dir($outDir) && !mkdir($outDir, 0755, true) && !is_dir($outDir)) {
+    fwrite(STDERR, "Cannot create {$outDir}\n");
+    exit(1);
+}
+
+$ok = 0;
+$fail = 0;
+foreach ($map as $method => $basename) {
+    if (!method_exists(Scenarios::class, $method)) {
+        fwrite(STDERR, "Scenarios::{$method}() does not exist — skipping\n");
+        $fail++;
+        continue;
+    }
+    try {
+        $writer = Scenarios::$method();
+        $path = $outDir . '/' . $basename . '.fit';
+        $writer->writeTo($path);
+        printf("%s  %6d bytes\n", $basename . '.fit', filesize($path));
+        $ok++;
+    } catch (\Throwable $e) {
+        fwrite(STDERR, "FAIL {$basename}: " . $e->getMessage() . "\n");
+        $fail++;
+    }
+}
+
+// The Tiergarten run is also the fixture behind the runnable examples in
+// demos/. Copy the freshly written sample to the demos/ root.
+$src = $outDir . '/tiergarten-run.fit';
+$dst = dirname(__DIR__) . '/demos/tiergarten-run.fit';
+if (is_file($src)) {
+    if (!copy($src, $dst)) {
+        fwrite(STDERR, "FAIL: could not copy {$src} → {$dst}\n");
+        $fail++;
+    } else {
+        printf("copied tiergarten-run.fit → %s\n", $dst);
+    }
+}
+
+echo "\n{$ok} files written, {$fail} failed.\n";
+exit($fail === 0 ? 0 : 1);
