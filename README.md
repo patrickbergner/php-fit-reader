@@ -367,4 +367,4 @@ Produces under `build/`:
 ### Contributing
 
 - Public API lives on [`FitReader`](src/FitReader.php) — add new entry points there.
-- New exporters belong under [`src/Export`](`src/Export/`).
+- New exporters belong under [`src/Export`](src/Export/).
