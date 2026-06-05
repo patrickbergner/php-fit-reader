@@ -42,7 +42,7 @@ final class EncodedPolyline
             $out .= chr((0x20 | ($v & 0x1F)) + 63);
             $v >>= 5;
         }
-        $out .= chr($v + 63);
+        $out .= chr(($v + 63) & 0xFF);
         return $out;
     }
 }

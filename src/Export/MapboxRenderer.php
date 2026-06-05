@@ -9,6 +9,7 @@ use Emontis\FitReader\Activity\Record;
 use Emontis\FitReader\Activity\Session;
 use Emontis\FitReader\Geo\DouglasPeucker;
 use Emontis\FitReader\Geo\EncodedPolyline;
+use Emontis\FitReader\Geo\TrackPoints;
 
 /**
  * Render the GPS track(s) of an Activity as a single PNG via the Mapbox
@@ -114,14 +115,7 @@ final class MapboxRenderer
     {
         $tracks = [];
         foreach ($activity->sessions as $session) {
-            $points = [];
-            foreach ($resolveRecords($session) as $record) {
-                $pos = $record->position();
-                if ($pos === null) {
-                    continue;
-                }
-                $points[] = [$pos->lat, $pos->lng];
-            }
+            $points = TrackPoints::of($resolveRecords($session));
             if (count($points) >= 2) {
                 $tracks[] = $points;
             }
@@ -152,7 +146,7 @@ final class MapboxRenderer
                 );
             }
             $url = sprintf(
-                '%s%s/static/%s/auto/%dx%d@2x?access_token=%s&padding=24',
+                '%s%s/static/%s/auto/%dx%d@2x?access_token=%s&padding=60',
                 self::ENDPOINT,
                 $this->styleId,
                 implode(',', $overlays),

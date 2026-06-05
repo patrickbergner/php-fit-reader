@@ -225,8 +225,13 @@ final class TcxWriter
 
     private function writeTrackpoint(\XMLWriter $xml, Record $r): void
     {
+        $time = $r->timestamp();
+        if ($time === null) {
+            return; // caller already filters these out; the guard narrows the type
+        }
+
         $xml->startElement('Trackpoint');
-        $xml->writeElement('Time', self::isoZ($r->timestamp())); // guaranteed non-null by caller
+        $xml->writeElement('Time', self::isoZ($time));
 
         $pos = $r->position();
         if ($pos !== null) {

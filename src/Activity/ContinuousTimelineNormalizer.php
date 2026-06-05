@@ -7,7 +7,7 @@ namespace Emontis\FitReader\Activity;
 use Emontis\FitReader\Value\GeoPoint;
 
 /**
- * Strava (and a few other writers) split each logical 1 Hz sample into
+ * Strava (and a few other writers) split each logical 1 second sample into
  * several `record` messages at the same timestamp, each carrying a disjoint
  * subset of fields. This class collapses such a stream onto a continuous
  * step-second timeline (one record per step from min to max timestamp,

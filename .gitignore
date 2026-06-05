@@ -3,6 +3,6 @@
 /build/
 /.phpunit.cache/
 /.phpunit.result.cache
-/samples/*.fit
+/resources/samples/*.fit
 /resources/mapbox-access-token.txt
 /resources/Profile.xlsx

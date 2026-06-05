@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Emontis\FitReader\Tests\Support\SyntheticFit;
 
+use Emontis\FitReader\Protocol\BaseType;
+use Emontis\FitReader\Value\FitTimestamp;
+
 /**
  * Scenario library — one public static method per synthetic .fit file the
  * `bin/generate-default-samples` script writes into samples/default/. Each
@@ -218,18 +221,18 @@ final class Scenarios
      * (scaled to length about the gate) is run three times; pace alternates
      * between fast and slow blocks. This is the rich fixture behind the runnable
      * examples in demos/, so it deliberately looks like a real multi-sensor
-     * capture rather than a tidy 1 Hz stream:
+     * capture rather than a tidy 1 second stream:
      *
      *   - Three paired sensors (own device_info each): the watch GPS, a chest
      *     strap (heart_rate + respiration) and a running-dynamics footpod
      *     (cadence + fractional_cadence, power, vertical_oscillation,
      *     stance_time(_percent), vertical_ratio, step_length).
-     *   - Variable message frequency / partial records: mostly merged 1 Hz, but
+     *   - Variable message frequency / partial records: mostly merged 1 second, but
      *     one 5-minute block arrives Strava-fragmented — position, heart rate and
      *     footpod each in their own message at the same timestamp, so that stretch
      *     has position-only and heart-rate-only records — and another block has
      *     the footpod disconnected (records without cadence/dynamics). The
-     *     position channel itself stays a dense 1 Hz so GPS-derived speed/pace
+     *     position channel itself stays a dense 1 second so GPS-derived speed/pace
      *     stays sane.
      *   - Two brief GPS dropouts (canopy/underpass; position omitted, the watch
      *     keeps distance/speed) and a brief HR-strap reseat.
@@ -316,8 +319,20 @@ final class Scenarios
         $w->add('device_info', ['timestamp' => $start, 'device_index' => 2, 'manufacturer' => 'garmin', 'product' => 3287, 'battery_level' => 76]);
         self::startEvent($w, $start);
 
+        // A Connect IQ field from a Stryd-style running-power footpod — declared
+        // once up front, then carried on the footpod records below.
+        $w->add('field_description', [
+            'developer_data_index'    => 0,
+            'field_definition_number' => 0,
+            'fit_base_type_id'        => 'uint16',
+            'field_name'              => 'Leg Spring Stiffness',
+            'units'                   => 'kN/m',
+            'scale'                   => 100,
+        ]);
+
         /** @var list<array{t: int, dist: float, hr: int, cad: int, pow: int}> $ticks */
         $ticks  = [];
+        $dynAcc = ['vo' => 0.0, 'gct' => 0.0, 'sl' => 0.0, 'stb' => 0.0, 'n' => 0]; // for session averages
         $cursor = 0.0;
         $t      = 0;
         while (true) {
@@ -332,16 +347,19 @@ final class Scenarios
             $hr   = max(95, min(186, (int) round(120 + ($pace - 2.5) * 28 + min(20.0, $t / 180.0))));
             $resp = max(14.0, min(58.0, round(22.0 + ($hr - 120) * 0.32, 1)));
             $pow  = (int) round($pace * 70.0 + 40.0);               // running power, W
-            $slM  = $cad > 0 ? $pace * 60.0 / $cad : 0.0;           // meters per step
+            $slM  = $pace * 60.0 / $cad;                            // meters per step (cadence is always > 0 here)
             $vo   = max(60.0, min(120.0, round(105.0 - $pace * 7.0, 1)));  // vertical oscillation, mm
             $gct  = (int) round(235.0 - ($pace - 2.7) * 30.0);     // ground contact, ms
             $gctp = round(33.0 - ($pace - 2.7) * 1.5, 1);          // stance time, %
+            $stb  = round(50.0 + 1.5 * sin($t / 120.0), 1);        // left/right stance balance, %
             $vr   = $slM > 0.0 ? round($vo / ($slM * 1000.0) * 100.0, 1) : 8.0; // vertical ratio, %
+            $lss  = round(9.5 + ($cad - 175) * 0.04 + 0.6 * sin($t / 90.0), 2); // leg spring stiffness, kN/m (Stryd)
             $alt  = round(34.0 + 1.5 * sin($t / 300.0) + 0.4 * sin($t / 37.0), 1);
 
             $ticks[] = ['t' => $t, 'dist' => $dist, 'hr' => $hr, 'cad' => $cad, 'pow' => $pow];
+            $dynAcc['vo'] += $vo; $dynAcc['gct'] += $gct; $dynAcc['sl'] += $slM * 1000.0; $dynAcc['stb'] += $stb; $dynAcc['n']++;
 
-            // How the devices recorded this second. Position stays a dense 1 Hz
+            // How the devices recorded this second. Position stays a dense 1 second
             // channel (GPS-derived speed/pace depends on it) apart from two brief
             // dropouts; the variety comes from fragmentation and a footpod that
             // disconnects for one block. Groups: pos = watch GPS, mov = the
@@ -374,8 +392,13 @@ final class Scenarios
                 'vertical_oscillation' => $vo,
                 'stance_time'          => $gct,
                 'stance_time_percent'  => $gctp,
+                'stance_time_balance'  => $stb,
                 'vertical_ratio'       => $vr,
                 'step_length'          => round($slM * 1000.0, 1),
+            ];
+            // The footpod also reports the Connect IQ "Leg Spring Stiffness" field.
+            $devFields = $footOff ? [] : [
+                ['fieldNum' => 0, 'devDataIndex' => 0, 'baseType' => BaseType::Uint16, 'value' => (int) round($lss * 100)],
             ];
 
             if ($block === 2) {
@@ -390,9 +413,14 @@ final class Scenarios
                 }
                 $w->add('record', ['timestamp' => $ts] + $mov + $dyn);
             } else {
-                // Merged 1 Hz — one record with whatever the sensors gave us
+                // Merged 1 second — one record with whatever the sensors gave us
                 // (block 5 has no footpod fields; a dropout omits its group).
-                $w->add('record', ['timestamp' => $ts] + $pos + $mov + $hrGrp + $dyn);
+                $merged = ['timestamp' => $ts] + $pos + $mov + $hrGrp + $dyn;
+                if ($devFields !== []) {
+                    $w->addWithDeveloperFields('record', $merged, $devFields);
+                } else {
+                    $w->add('record', $merged);
+                }
             }
 
             if ($done) {
@@ -438,6 +466,7 @@ final class Scenarios
         $allPow = array_column($ticks, 'pow');
         $end    = $start->modify("+{$duration} sec");
         self::stopEvent($w, $end);
+        $nDyn = max(1, $dynAcc['n']);
         self::session(
             $w, $start, $duration, 'running', $totalLen,
             numLaps: $lapCount,
@@ -448,8 +477,12 @@ final class Scenarios
             avgPow: (int) round(array_sum($allPow) / count($allPow)),
             maxPow: max($allPow),
             calories: 780, ascent: 35, descent: 35,
+            avgVerticalOscillation: round($dynAcc['vo'] / $nDyn, 1),
+            avgStanceTime: round($dynAcc['gct'] / $nDyn, 1),
+            avgStepLength: round($dynAcc['sl'] / $nDyn, 1),
+            avgStanceTimeBalance: round($dynAcc['stb'] / $nDyn, 1),
         );
-        self::activity($w, $end, 1, $duration);
+        self::activity($w, $end, 1, $duration, utcOffsetSec: 3600); // Berlin, mid-January = UTC+1
         return $w;
     }
 
@@ -628,7 +661,7 @@ final class Scenarios
         $dist = 0.0;
         self::header($w, $start);
         self::startEvent($w, $start);
-        // Variable cadence: 1 Hz for most of the ride, ~30 s sparse during a 10 min stop in the middle.
+        // Variable cadence: 1 second for most of the ride, ~30 s sparse during a 10 min stop in the middle.
         $stopStart = 4500;
         $stopEnd   = 5100;
         for ($t = 0; $t < $duration; $t++) {
@@ -1363,6 +1396,10 @@ final class Scenarios
         ?int $ascent = null,
         ?int $descent = null,
         ?int $timerSec = null,
+        ?float $avgVerticalOscillation = null,
+        ?float $avgStanceTime = null,
+        ?float $avgStepLength = null,
+        ?float $avgStanceTimeBalance = null,
     ): void {
         $fields = [
             'timestamp'          => $start->modify("+{$durationSec} sec"),
@@ -1385,19 +1422,30 @@ final class Scenarios
         if ($calories!== null)  $fields['total_calories'] = $calories;
         if ($ascent  !== null)  $fields['total_ascent']   = $ascent;
         if ($descent !== null)  $fields['total_descent']  = $descent;
+        if ($avgVerticalOscillation !== null) $fields['avg_vertical_oscillation'] = $avgVerticalOscillation;
+        if ($avgStanceTime          !== null) $fields['avg_stance_time']          = $avgStanceTime;
+        if ($avgStepLength          !== null) $fields['avg_step_length']          = $avgStepLength;
+        if ($avgStanceTimeBalance   !== null) $fields['avg_stance_time_balance']  = $avgStanceTimeBalance;
         $w->add('session', $fields);
     }
 
-    private static function activity(Writer $w, \DateTimeImmutable $end, int $sessions, int $totalTimerSec): void
+    private static function activity(Writer $w, \DateTimeImmutable $end, int $sessions, int $totalTimerSec, int $utcOffsetSec = 0): void
     {
-        $w->add('activity', [
+        $fields = [
             'timestamp'        => $end,
             'total_timer_time' => (float) $totalTimerSec,
             'num_sessions'     => $sessions,
             'type'             => 'manual',
             'event'            => 'activity',
             'event_type'       => 'stop',
-        ]);
+        ];
+        // local_timestamp is the same instant expressed in local wall-clock,
+        // stored as FIT seconds (no profile date_time conversion), so the
+        // decoder leaves it an int and Activity::utcOffsetSeconds() can recover it.
+        if ($utcOffsetSec !== 0) {
+            $fields['local_timestamp'] = ($end->getTimestamp() - FitTimestamp::FIT_EPOCH_OFFSET) + $utcOffsetSec;
+        }
+        $w->add('activity', $fields);
     }
 
     /** One sport leg for a multisport activity — records + lap + session. */
@@ -1410,7 +1458,7 @@ final class Scenarios
         float $speedMs,
         int $hrBase,
     ): \DateTimeImmutable {
-        $hasGps = $sport !== 'swimming' || $sport === 'cycling';
+        $hasGps = $sport !== 'swimming';
         [$lat, $lng] = [self::ORIGIN_LAT, self::ORIGIN_LNG];
         $dist = 0.0;
         for ($t = 0; $t < $durationSec; $t++) {

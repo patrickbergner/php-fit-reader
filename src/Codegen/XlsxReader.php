@@ -101,15 +101,12 @@ final class XlsxReader
         $type = $cell->getAttribute('t');
 
         if ($type === 'inlineStr') {
-            $text = '';
-            foreach ($xp->query('.//s:t', $cell) ?: [] as $t) {
-                $text .= $t->textContent;
-            }
-            return $text;
+            return self::textOf($xp->query('.//s:t', $cell));
         }
 
-        $vNode = $xp->query('s:v', $cell)->item(0);
-        if ($vNode === null) {
+        $vNodes = $xp->query('s:v', $cell);
+        $vNode  = $vNodes === false ? null : $vNodes->item(0);
+        if (!$vNode instanceof \DOMNode) {
             return '';
         }
         $v = $vNode->textContent;
@@ -122,6 +119,26 @@ final class XlsxReader
         return $v;
     }
 
+    /**
+     * Concatenate the text content of every DOMNode in an xpath result,
+     * tolerating the `false` a query can return and skipping namespace nodes.
+     *
+     * @param \DOMNodeList<\DOMNode|\DOMNameSpaceNode>|false $nodes
+     */
+    private static function textOf(\DOMNodeList|false $nodes): string
+    {
+        if ($nodes === false) {
+            return '';
+        }
+        $text = '';
+        foreach ($nodes as $n) {
+            if ($n instanceof \DOMNode) {
+                $text .= $n->textContent;
+            }
+        }
+        return $text;
+    }
+
     private function loadSharedStrings(): void
     {
         $xml = $this->zip->getFromName('xl/sharedStrings.xml');
@@ -132,12 +149,14 @@ final class XlsxReader
         $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT);
         $xp = new \DOMXPath($dom);
         $xp->registerNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-        foreach ($xp->query('//s:si') ?: [] as $si) {
-            $text = '';
-            foreach ($xp->query('.//s:t', $si) ?: [] as $t) {
-                $text .= $t->textContent;
+        $siList = $xp->query('//s:si');
+        if ($siList === false) {
+            return;
+        }
+        foreach ($siList as $si) {
+            if ($si instanceof \DOMElement) {
+                $this->sst[] = self::textOf($xp->query('.//s:t', $si));
             }
-            $this->sst[] = $text;
         }
     }
 

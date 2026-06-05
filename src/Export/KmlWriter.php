@@ -139,10 +139,17 @@ final class KmlWriter
         $xml->writeElement('altitudeMode', 'clampToGround');
 
         foreach ($fixes as $r) {
-            $xml->writeElement('when', self::isoZ($r->timestamp()));
+            $t = $r->timestamp();
+            if ($t === null) {
+                continue;
+            }
+            $xml->writeElement('when', self::isoZ($t));
         }
         foreach ($fixes as $r) {
             $pos = $r->position();
+            if ($pos === null) {
+                continue;
+            }
             $alt = $r->altitude() ?? 0.0;
             $xml->writeElementNs('gx', 'coord', null, sprintf(
                 '%s %s %s',
@@ -181,6 +188,9 @@ final class KmlWriter
         $coords = [];
         foreach ($records as $r) {
             $pos = $r->position();
+            if ($pos === null) {
+                continue;
+            }
             $alt = $r->altitude() ?? 0.0;
             // KML <coordinates>: comma-separated lon,lat,alt tuples, space-separated.
             $coords[] = sprintf('%s,%s,%s', self::fmtCoord($pos->lng), self::fmtCoord($pos->lat), self::fmtFloat($alt, 2));
@@ -216,7 +226,7 @@ final class KmlWriter
 
     private function defaultName(Activity $activity): string
     {
-        $sport = $activity->sessions[0]?->sport() ?? 'activity';
+        $sport = ($activity->sessions[0] ?? null)?->sport() ?? 'activity';
         $when  = $activity->timeCreated()?->format('Y-m-d H:i') ?? '';
         return trim(sprintf('%s %s', ucfirst($sport), $when));
     }

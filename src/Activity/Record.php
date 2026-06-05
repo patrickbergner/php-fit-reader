@@ -91,7 +91,106 @@ final readonly class Record
         return is_int($v) ? $v : null;
     }
 
+    // --- Running dynamics ----------------------------------------------------
+
+    /** Vertical oscillation in millimetres. */
+    public function verticalOscillation(): ?float
+    {
+        return self::asFloat($this->fields['vertical_oscillation'] ?? null);
+    }
+
+    /** Ground-contact (stance) time in milliseconds. */
+    public function stanceTime(): ?float
+    {
+        return self::asFloat($this->fields['stance_time'] ?? null);
+    }
+
+    /** Stance time as a percent of the stride. */
+    public function stanceTimePercent(): ?float
+    {
+        return self::asFloat($this->fields['stance_time_percent'] ?? null);
+    }
+
+    /** Left/right ground-contact-time balance, in percent. */
+    public function stanceTimeBalance(): ?float
+    {
+        return self::asFloat($this->fields['stance_time_balance'] ?? null);
+    }
+
+    /** Vertical ratio (vertical oscillation ÷ step length), in percent. */
+    public function verticalRatio(): ?float
+    {
+        return self::asFloat($this->fields['vertical_ratio'] ?? null);
+    }
+
+    /** Step length in millimetres. */
+    public function stepLength(): ?float
+    {
+        return self::asFloat($this->fields['step_length'] ?? null);
+    }
+
+    /** Fractional cadence (the sub-integer part), in rpm. */
+    public function fractionalCadence(): ?float
+    {
+        return self::asFloat($this->fields['fractional_cadence'] ?? null);
+    }
+
+    /** Respiration rate in breaths/min (prefers the enhanced field). */
+    public function respirationRate(): ?float
+    {
+        return self::asFloat($this->fields['enhanced_respiration_rate'] ?? null)
+            ?? self::asFloat($this->fields['respiration_rate'] ?? null);
+    }
+
+    // --- Cycling dynamics ----------------------------------------------------
+
+    /** Raw left/right power balance field (high bit flags the reference side). */
+    public function leftRightBalance(): ?int
+    {
+        $v = $this->fields['left_right_balance'] ?? null;
+        return is_int($v) ? $v : null;
+    }
+
+    /** Left/right pedal torque effectiveness, in percent. */
+    public function leftTorqueEffectiveness(): ?float
+    {
+        return self::asFloat($this->fields['left_torque_effectiveness'] ?? null);
+    }
+
+    public function rightTorqueEffectiveness(): ?float
+    {
+        return self::asFloat($this->fields['right_torque_effectiveness'] ?? null);
+    }
+
+    /** Left/right/combined pedal smoothness, in percent. */
+    public function leftPedalSmoothness(): ?float
+    {
+        return self::asFloat($this->fields['left_pedal_smoothness'] ?? null);
+    }
+
+    public function rightPedalSmoothness(): ?float
+    {
+        return self::asFloat($this->fields['right_pedal_smoothness'] ?? null);
+    }
+
+    public function combinedPedalSmoothness(): ?float
+    {
+        return self::asFloat($this->fields['combined_pedal_smoothness'] ?? null);
+    }
+
     public function field(string $name, mixed $default = null): mixed
+    {
+        return $this->fields[$name] ?? $default;
+    }
+
+    /**
+     * Read a developer (Connect IQ) field by its declared name, e.g.
+     * `developerField('Stryd Power')`. Resolved developer fields share the
+     * same store as {@see field()}; this signals intent. Returns $default when
+     * the field is absent (or stayed raw bytes under `dev_field_N` because no
+     * `field_description` described it).
+     */
+    public function developerField(string $name, mixed $default = null): mixed
     {
         return $this->fields[$name] ?? $default;
     }

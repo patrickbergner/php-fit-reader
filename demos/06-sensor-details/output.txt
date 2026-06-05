@@ -1,0 +1,38 @@
+──────────────────────────────────────────────────────────────────────
+06 · Sensor detail — every typed reading on a Record
+──────────────────────────────────────────────────────────────────────
+
+Record @ 09:00:00
+
+Position & motion
+  position           52.51630, 13.37770
+  altitude           34 m
+  speed              2.6 m/s
+  distance           0 m
+
+Core sensors
+  heart rate         123 bpm
+  cadence            166 spm
+  power              222 W
+  temperature        12 °C
+  GPS accuracy       4 m
+
+Running dynamics
+  vertical oscillation 86.8 mm
+  stance time          238 ms
+  stance time pct      33.2 %
+  stance balance L/R   50 %
+  vertical ratio       9.19 %
+  step length          939.8 mm
+  fractional cadence   0 rpm
+  respiration rate     23 brpm
+
+Developer (Connect IQ) field
+  Leg Spring Stiffness 9.14 kN/m
+
+Escape hatches
+  field('vertical_oscillation') = 86.8
+  all(): 21 resolved fields on this record
+
+Also typed, but cycling-/diving-only (— in this running file):
+  leftRightBalance(), left/rightTorqueEffectiveness(), left/right/combinedPedalSmoothness(), depth(), grade()

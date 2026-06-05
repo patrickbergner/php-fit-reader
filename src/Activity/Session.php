@@ -133,6 +133,94 @@ final class Session
         return is_int($v) ? $v : null;
     }
 
+    /** Average vertical oscillation in millimetres. */
+    public function avgVerticalOscillation(): ?float
+    {
+        return self::asFloat($this->summary['avg_vertical_oscillation'] ?? null);
+    }
+
+    /** Average ground-contact (stance) time in milliseconds. */
+    public function avgStanceTime(): ?float
+    {
+        return self::asFloat($this->summary['avg_stance_time'] ?? null);
+    }
+
+    /** Average stance time as a percent of the stride. */
+    public function avgStanceTimePercent(): ?float
+    {
+        return self::asFloat($this->summary['avg_stance_time_percent'] ?? null);
+    }
+
+    /** Average step length in millimetres. */
+    public function avgStepLength(): ?float
+    {
+        return self::asFloat($this->summary['avg_step_length'] ?? null);
+    }
+
+    /**
+     * Active ("moving") time in seconds: the clock with pauses removed. Uses
+     * the device's `total_timer_time` when present; otherwise derives it from
+     * the record cadence, counting gaps larger than $maxGapSeconds (auto-pause)
+     * as stopped rather than moving. Null when neither is available.
+     */
+    public function movingTime(float $maxGapSeconds = 30.0): ?float
+    {
+        $timer = $this->totalTimerTime();
+        if ($timer !== null) {
+            return $timer;
+        }
+
+        $moving = 0.0;
+        $prev   = null;
+        $any    = false;
+        foreach ($this->records as $r) {
+            $t = $r->timestamp()?->getTimestamp();
+            if ($t === null) {
+                continue;
+            }
+            if ($prev !== null && $t > $prev) {
+                $any = true;
+                $gap = (float) ($t - $prev);
+                if ($gap <= $maxGapSeconds) {
+                    $moving += $gap;
+                }
+            }
+            $prev = $t;
+        }
+        return $any ? $moving : null;
+    }
+
+    /**
+     * Stopped (paused) time in seconds: elapsed wall-clock minus moving time.
+     * Uses `total_elapsed_time` when present, else the record time span. Null
+     * when it can't be determined.
+     */
+    public function stoppedTime(float $maxGapSeconds = 30.0): ?float
+    {
+        $elapsed = $this->totalElapsedTime() ?? $this->recordSpanSeconds();
+        $moving  = $this->movingTime($maxGapSeconds);
+        if ($elapsed === null || $moving === null) {
+            return null;
+        }
+        return max(0.0, $elapsed - $moving);
+    }
+
+    /** Wall-clock span between the first and last timestamped record, in seconds. */
+    private function recordSpanSeconds(): ?float
+    {
+        $first = null;
+        $last  = null;
+        foreach ($this->records as $r) {
+            $t = $r->timestamp()?->getTimestamp();
+            if ($t === null) {
+                continue;
+            }
+            $first ??= $t;
+            $last = $t;
+        }
+        return ($first !== null && $last !== null && $last >= $first) ? (float) ($last - $first) : null;
+    }
+
     public function field(string $name, mixed $default = null): mixed
     {
         return $this->summary[$name] ?? $default;

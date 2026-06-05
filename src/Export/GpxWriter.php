@@ -174,7 +174,7 @@ final class GpxWriter
 
     private function defaultName(Activity $activity): string
     {
-        $sport = $activity->sessions[0]?->sport() ?? 'activity';
+        $sport = ($activity->sessions[0] ?? null)?->sport() ?? 'activity';
         $when  = $activity->timeCreated()?->format('Y-m-d H:i') ?? '';
         return trim(sprintf('%s %s', ucfirst($sport), $when));
     }

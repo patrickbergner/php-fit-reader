@@ -1,14 +1,16 @@
 # Flexible and Interoperable Data Transfer (FIT) File Reader
 
-Read Garmin FIT activity files into PHP objects — in streaming or eager mode. Export to CSV, GPX, KML, TCX or a Mapbox PNG.
+[![CI](https://github.com/patrickbergner/php-fit-reader/actions/workflows/ci.yml/badge.svg)](https://github.com/patrickbergner/php-fit-reader/actions/workflows/ci.yml)
 
-Supports collapsing the data stream onto a continuous step-second timeline for easier processing.
+Read Garmin FIT activity files into typed PHP objects in streaming or eager mode, then analyze, transform, visualize and work with the data. The library allows collapsing the data stream onto a continuous step-second timeline that unites position and sensor data for easier processing.
+
+Convenience exporters to other formats are included as well (CSV, GPX 1.1, KML 2.2, TCX v2, GeoJSON, Mapbox PNG).
 
 ## What is a FIT file?
 
-**FIT** is the binary container Garmin/ANT bike computers, GPS watches, and indoor trainers write out after each workout. A single `.fit` file holds the GPS track, per-second sensor readings (heart rate, cadence, power, temperature), laps, events, device info, and a summary — all in one self-describing stream.
+**FIT** is the binary container Garmin bike computers, GPS watches, indoor trainers and other equipment write out. A single `.fit` file can hold a GPS track, sensor readings (heart rate, cadence, power, temperature, …), laps, events, device info, and a summary — all in one binary stream.
 
-Strava, Garmin Connect, RideWithGPS, TrainingPeaks and most other fitness platforms read FIT. This library decodes those files in PHP.
+Strava, Garmin Connect, RideWithGPS, TrainingPeaks and many other fitness platforms and tools talk FIT as well. This library decodes it in PHP with PHPStan level 8 compliance.
 
 ## Install
 
@@ -16,9 +18,9 @@ Strava, Garmin Connect, RideWithGPS, TrainingPeaks and most other fitness platfo
 composer require emontis/fit-reader
 ```
 
-Requires PHP 8.2+ and nothing else for simply reading FIT into PHP objects or exporting to CSV.
+Requires PHP 8.2+ and nothing else to read FIT into PHP objects, analyze and work with them, and/or export to CSV or GeoJSON.
 
-Additionally requires the `xmlwriter` extension for the GPX/KML/TCX exporters. The Mapbox PNG generator uses the `curl` extension.
+The GPX/KML/TCX exporters additionally need the `xmlwriter` extension. The Mapbox PNG generator uses the `curl` extension.
 
 ## Quick start
 
@@ -32,7 +34,7 @@ echo $activity->sessions[0]->sport(), "\n";
 
 ## Demos
 
-The [`demos`](demos/) directory is a progressive tour of the public API against a sample FIT file. See the [`README.md`](demos/README.md) there for more information.
+The [`demos`](demos/) directory is a runnable tour against a sample FIT file — reading, normalizing, analyzing, visualizing, and exporting. See its [`README`](demos/README.md) for the full list.
 
 ## Two ways to read
 
@@ -76,6 +78,19 @@ foreach (FitReader::messages('big-ride.fit') as $msg) {
     }
 }
 ```
+
+## Domain types
+
+The eager facade is a small tree of `readonly` objects — this is what you analyze and visualize.
+
+- **[`Activity`](src/Activity/Activity.php)** — `fileId`, `fileCreator`, `sessions[]`, `deviceInfos[]`, `events[]`, `summary`. Helpers: `manufacturer()`, `timeCreated()`, `numSessions()`, `totalTimerTime()`. Local time (FIT stores UTC): `utcOffsetSeconds()`, `localTimeCreated()`, `toLocalTime($utc)`.
+- **[`Session`](src/Activity/Session.php)** — `summary`, `laps[]`, `records[]` (flattened across laps for convenience). Typed accessors: `sport()`, `subSport()`, `startTime()`, `totalDistance()`, `totalTimerTime()`, `totalElapsedTime()`, `movingTime()`, `stoppedTime()`, `avgHeartRate()`, `maxHeartRate()`, `avgCadence()`, `maxCadence()`, `avgPower()`, `maxPower()`, `totalCalories()`, `totalAscent()`, `totalDescent()`, plus average running dynamics (`avgVerticalOscillation()`, `avgStanceTime()`, `avgStepLength()`, …). `recordsNormalized()` for the 1-second forward/back-filled view.
+- **[`Lap`](src/Activity/Lap.php)** — `summary`, `records[]`, sport/start/totals accessors.
+- **[`Record`](src/Activity/Record.php)** — `timestamp()`, `position()`, `distance()`, `speed()`, `altitude()`, `heartRate()`, `cadence()`, `power()`, `temperature()`, `depth()`, `grade()`, `gpsAccuracy()`. Running/cycling dynamics: `verticalOscillation()`, `stanceTime()`, `stepLength()`, `verticalRatio()`, `respirationRate()`, `leftRightBalance()`, pedal torque/smoothness, … Escape hatches: `field(name, default)`, `developerField(name, default)` (Connect IQ app fields), and `all()` return the raw resolved fields.
+- **[`GeoPoint`](src/Value/GeoPoint.php)** — `lat`, `lng` floats, in decimal degrees.
+- **[`BoundingBox`](src/Geo/BoundingBox.php)** — `minLat`, `minLng`, `maxLat`, `maxLng` of a track, plus `center()`; see [Visualize the track](#visualize-the-track).
+
+Missing values are surfaced as PHP `null` — the FIT base-type invalid sentinels (`0xFFFFFFFF` and friends) are translated for you.
 
 ## Normalization and derived fields
 
@@ -168,11 +183,104 @@ Notes:
 - Derived fields bypass `include`/`exclude` and override a same-named raw field.
 - Like raw fields, derived values are forward/back-filled unless you list the field in `noFill` — use that for instantaneous metrics where carrying a stale value would mislead.
 
+## Data analysis
+
+After reading the data, compute best efforts, lap pace, training load, climbing, drift, whatever… The following examples showcase some ideas and are implemented in the demos.
+
+**Best splits / fastest segments** ([demo](demos/11-best-splits/demo.php)). Every record carries a cumulative `distance()` and a `timestamp()`, so the fastest stretch of any length is a sliding window over those two series — your fastest 1 km, 5 km, 10 km:
+
+```php
+$session = FitReader::activity('run.fit')->sessions[0];
+foreach ($session->records as $r) {
+    $dist[] = $r->distance();                       // cumulative metres
+    $time[] = $r->timestamp()->getTimestamp();      // seconds
+}
+// slide a window over $dist/$time to find the min time covering ≥ N metres
+```
+
+**Heart-rate time-in-zone** ([demo](demos/12-hr-zones/demo.php)). Walk the normalized timeline and charge each second to the zone its heart rate falls in:
+
+```php
+foreach ($session->recordsNormalized() as $r) {
+    $zone = zoneFor($r->heartRate(), $session->maxHeartRate());
+    $timeInZone[$zone]++; // one second per record on the normalized timeline
+}
+```
+
+**Elevation & grade** ([demo](demos/13-elevation-grade/demo.php)). `altitude()` against cumulative `distance()` gives an elevation profile and per-segment grades; `Session::totalAscent()`/`totalDescent()` are the device's climb totals.
+
+**Aerobic decoupling & load** ([demo](demos/14-pace-hr-decoupling/demo.php)). Compare pace-per-heartbeat (`speed()` ÷ `heartRate()`) between the first and second half for cardiac drift, and weight HR over time for a Banister TRIMP training load.
+
+## Track visualization
+
+Putting the track on a map rarely needs a file — it needs the right shape for your provider. The included `Geo` toolkit turns records into exactly that; see the [visualization demo](demos/15-visualization/demo.php).
+
+**Bounds & center** — frame a static image, or `fitBounds` a web map:
+
+```php
+$bounds = FitReader::trackBounds($activity);   // ?BoundingBox over all sessions
+$center = $bounds?->center();                  // GeoPoint
+```
+
+**Encoded polyline** — the path overlay both the Mapbox Static Images API and the Google Maps Static API accept (simplify first to keep the URL short):
+
+```php
+$poly = FitReader::encodedPolyline($activity->sessions[0], simplifyToleranceDegrees: 1e-4);
+// Mapbox: …/static/path-4+f44({$poly})/auto/600x400?access_token=…
+// Google: …/staticmap?path=enc:{$poly}&size=600x400&key=…
+```
+
+**GeoJSON** — for web map libraries (Leaflet, MapLibre, Mapbox GL, OpenLayers). One `LineString` Feature per session, in `[lng, lat]` order:
+
+```php
+$json = FitReader::activityToGeoJsonString($activity);
+// or write a file: FitReader::activityToGeoJson($activity, 'ride.geojson');
+```
+
+The buildings bricks of these features are [`EncodedPolyline`](src/Geo/EncodedPolyline.php) (Google polyline), [`DouglasPeucker`](src/Geo/DouglasPeucker.php) (simplification), [`BoundingBox`](src/Geo/BoundingBox.php), and [`TrackPoints`](src/Geo/TrackPoints.php) (records → `lat,lng` pairs).
+
 ## Exporting
+
+The library allows converting a FIT file or an already parsed/modified `Activity` to other file formats. They all support the `normalize` option described in [Normalization](#normalization-and-derived-fields).
+
+### Comma-separated values (CSV)
+
+By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described in the Normalization section.
+
+```php
+// from an already processed Activity object
+FitReader::activityToCsv($activity, 'ride.csv'); // raw records
+FitReader::activityToCsv($activity, 'ride.csv', normalize: true); // default normalizer
+FitReader::activityToCsv($activity, 'ride.csv', normalize: [ 
+    'derive' => ['speed_kmh' => FitReader::kilometersPerHourFromGps(10)],
+]); // records normalized with a customized normalizer
+
+// or, directly from a FIT file
+FitReader::fitToCsv('ride.fit', 'ride.csv');
+```
+
+`*ToCsvString()` variants return the CSV strings without writing a file:
+
+```php
+$csvString = FitReader::activityToCsvString($activity);
+$csvString = FitReader::fitToCsvString('ride.fit');
+```
+
+#### CSV dialect
+
+The CSV dialect is configurable: pass `csv: [...]` to override any of the `separator`, `enclosure`, `escape`, or `eol` characters (defaults: `,` `"` `''` `"\n"`). It works on every CSV method:
+
+```php
+// semicolon-delimited, CRLF line endings
+FitReader::activityToCsv($activity, 'ride.csv', csv: ['separator' => ';', 'eol' => "\r\n"]);
+
+// tab-separated string
+$tsv = FitReader::activityToCsvString($activity, csv: ['separator' => "\t"]);
+```
 
 ### GPS Exchange Format (GPX) 1.1
 
-By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described above.
+By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described in the Normalization section.
 
 ```php
 // from an already processed Activity object
@@ -207,40 +315,77 @@ Therefore, a raw (non-normalized) export can't carry readings that have no posit
 
 This is a format limitation/design decision that only normalization or exporting to another format (like CSV) can mitigate.
 
-### Comma-separated values (CSV)
+### Keyhole Markup Language (KML) 2.2
 
-By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described above.
+By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described in the Normalization section.
 
 ```php
 // from an already processed Activity object
-FitReader::activityToCsv($activity, 'ride.csv'); // raw records
-FitReader::activityToCsv($activity, 'ride.csv', normalize: true); // default normalizer
-FitReader::activityToCsv($activity, 'ride.csv', normalize: [ 
+FitReader::activityToKml($activity, 'ride.kml'); // raw records
+FitReader::activityToKml($activity, 'ride.kml', normalize: true); // default normalizer
+FitReader::activityToKml($activity, 'ride.kml', normalize: [ 
     'derive' => ['speed_kmh' => FitReader::kilometersPerHourFromGps(10)],
 ]); // records normalized with a customized normalizer
 
 // or, directly from a FIT file
-FitReader::fitToCsv('ride.fit', 'ride.csv');
+FitReader::fitToKml('ride.fit', 'ride.kml');
 ```
 
-`*ToCsvString()` variants return the CSV strings without writing a file:
+`*ToKmlString()` variants return the KML XML strings without writing a file:
 
 ```php
-$csvString = FitReader::activityToCsvString($activity);
-$csvString = FitReader::fitToCsvString('ride.fit');
+$kmlString = FitReader::activityToKmlString($activity);
+$kmlString = FitReader::fitToKmlString('ride.fit');
 ```
 
-#### CSV dialect
+KML is a visualization format for Google Earth/GIS, not a fitness format. Each session becomes one `<Placemark>`: a time-animatable `<gx:Track>` when records carry timestamps, or a plain `<LineString>` otherwise. Heart rate and cadence — the only channels Google Earth surfaces — ride along the track as `<gx:SimpleArrayData>` arrays when present. Coordinates use KML's `lon,lat,alt` order (the reverse of GPX).
 
-The CSV dialect is configurable: pass `csv: [...]` to override any of the `separator`, `enclosure`, `escape`, or `eol` characters (defaults: `,` `"` `''` `"\n"`). It works on every CSV method:
+Like GPX, KML is geo position focused: records without a GPS fix are dropped.
+
+### Garmin Training Center (TCX) v2
+
+By default the raw records are written. Pass `normalize: true` for the default forward/back-filled 1-second timeline, or `normalize: [...]` to configure the [`ContinuousTimelineNormalizer`](src/Activity/ContinuousTimelineNormalizer.php) — all as described in the Normalization section.
 
 ```php
-// semicolon-delimited, CRLF line endings
-FitReader::activityToCsv($activity, 'ride.csv', csv: ['separator' => ';', 'eol' => "\r\n"]);
+// from an already processed Activity object
+FitReader::activityToTcx($activity, 'ride.tcx'); // raw records
+FitReader::activityToTcx($activity, 'ride.tcx', normalize: true); // default normalizer
+FitReader::activityToTcx($activity, 'ride.tcx', normalize: [ 
+    'derive' => ['speed_kmh' => FitReader::kilometersPerHourFromGps(10)],
+]); // records normalized with a customized normalizer
 
-// tab-separated string
-$tsv = FitReader::activityToCsvString($activity, csv: ['separator' => "\t"]);
+// or, directly from a FIT file
+FitReader::fitToTcx('ride.fit', 'ride.tcx');
 ```
+
+`*ToTcxString()` variants return the TCX XML strings without writing a file:
+
+```php
+$tcxString = FitReader::activityToTcxString($activity);
+$tcxString = FitReader::fitToTcxString('ride.fit');
+```
+
+Unlike GPX and KML, and close to FIT, TCX is an activity/fitness focused format and is lap- and summary-aware: one `<Activity>` per session, one `<Lap>` per lap carrying the lap summary aggregates (total time/distance, max speed, calories, avg/max HR, cadence), and one `<Trackpoint>` per record. Heart rate, cadence, distance and altitude sit in the base schema; speed and power live in Garmin's `ActivityExtension v2` namespace.
+
+TCX's `Sport` attribute is very restricted (Running/Biking/Other), so the richer FIT sport/sub-sport is mapped down and also preserved verbatim in a `<Notes>` element.
+
+A trackpoint only requires a timestamp, not a position — so unlike GPX and KML, TCX carries position-less sensor readings in raw mode; only records without a timestamp are dropped.
+
+### GeoJSON (RFC 7946)
+
+A `FeatureCollection` with one `<LineString>` per session, in `[lng, lat]` order — the interchange format web map libraries read. Like the other exporters it takes the `normalize` option, and it needs no `xmlwriter` (plain JSON).
+
+```php
+// from an already processed Activity object
+FitReader::activityToGeoJson($activity, 'ride.geojson');
+// or, directly from a FIT file
+FitReader::fitToGeoJson('ride.fit', 'ride.geojson');
+// string variants, without writing a file:
+$json = FitReader::activityToGeoJsonString($activity);
+$json = FitReader::fitToGeoJsonString('ride.fit');
+```
+
+See [Visualize the track](#visualize-the-track) for using it with Leaflet/MapLibre, plus the bounding-box and encoded-polyline helpers for static maps.
 
 ### Mapbox PNG Image
 
@@ -259,36 +404,35 @@ Returns `true` on success, `false` if the activity has no GPS data or the API ca
 
 This is a nice-to-have feature to have a quick visualization of the FIT file processing as part of the integration tests (see below). No further customization options will be added. The Mapbox free tier currently offers thousands of map generations per month.
 
-## Domain types
-
-The eager facade is a small tree of `readonly` objects.
-
-- **[`Activity`](src/Activity/Activity.php)** — `fileId`, `fileCreator`, `sessions[]`, `deviceInfos[]`, `events[]`, `summary`. Helpers: `manufacturer()`, `timeCreated()`, `numSessions()`, `totalTimerTime()`.
-- **[`Session`](src/Activity/Session.php)** — `summary`, `laps[]`, `records[]` (flattened across laps for convenience). Typed accessors: `sport()`, `subSport()`, `startTime()`, `totalDistance()`, `totalTimerTime()`, `totalElapsedTime()`, `avgHeartRate()`, `maxHeartRate()`, `avgCadence()`, `maxCadence()`, `avgPower()`, `maxPower()`, `totalCalories()`, `totalAscent()`, `totalDescent()`. `recordsNormalized()` for the 1-second forward/back-filled view.
-- **[`Lap`](src/Activity/Lap.php)** — `summary`, `records[]`, sport/start/totals accessors.
-- **[`Record`](src/Activity/Record.php)** — `timestamp()`, `position()`, `distance()`, `speed()`, `altitude()`, `heartRate()`, `cadence()`, `power()`, `temperature()`, `depth()`, `grade()`, `gpsAccuracy()`. Escape hatches: `field(name, default)` and `all()` return the raw resolved fields.
-- **[`GeoPoint`](src/Value/GeoPoint.php)** — `lat`, `lng` floats, in decimal degrees.
-
-Missing values are surfaced as PHP `null` — the FIT base-type invalid sentinels (`0xFFFFFFFF` and friends) are translated for you.
-
 ## Status
 
 What's in scope today:
 
-- **Read-only** decoding of **FIT activity files** (`file_id.type == 4`).
-- Support for **all FIT message types**, now and **in the future** (see the "Regenerating the Profile" subsection).
-- Comma-separated values (**CSV**) export
-- GPS Exchange Format 1.1 (**GPX**) export
-- Keyhole Markup Language 2.2 (**KML**) export
-- Garmin Training Center v2 (**TCX**) export
-- **Mapbox** PNG renderer.
+- **Read-only** decoding of **FIT activity files** (`file_id.type == 4`) into typed PHP objects.
+- Support for **all FIT message types**, now and **in the future** (see the "Regenerating the Profile" subsection), including **developer (Connect IQ) fields** resolved by name, base type and scale.
+- Typed **running/cycling dynamics** (vertical oscillation, stance time, step length, pedal balance, …), **local time** (UTC ↔ local), and **moving vs. stopped time**.
+- **Analyze** on the objects directly — best splits, HR zones, elevation/grade, aerobic decoupling (see the [demos](demos/)).
+- Track **visualization** prep — bounding box/center, Douglas–Peucker simplification, Google/Mapbox **encoded polylines**.
 - Collapsing the data stream onto a **continuous step-second timeline** for easier processing and with pluggable derivers.
+- Convenience **exporters**: Comma-separated values (**CSV**), GPS Exchange Format 1.1 (**GPX**), Keyhole Markup Language 2.2 (**KML**), Garmin Training Center v2 (**TCX**), **GeoJSON** (RFC 7946), and a **Mapbox** PNG renderer.
 
 What isn't:
 
 - **No FIT writer.** A small writer exists under `tests/Support/SyntheticFit/` to generate test fixtures, but it's intentionally test-scoped and not part of the public API.
 - **Course, workout, monitoring, and other FIT file kinds** parse fine via the streaming `messages()` API but aren't projected into a typed object.
 - **64-bit PHP only** (`PHP_INT_SIZE = 8`). Big-endian definition messages are supported per the per-definition architecture byte. `uint64` values above `PHP_INT_MAX` are surfaced as strings.
+
+## Repo layout
+
+| Path | Contents |
+|---|---|
+| [`demos`](demos/) | tour of the public API (run all with `demos/run.sh`) |
+| [`src`](src/) | library source with the [`FitReader`](src/FitReader.php) entry point |
+| [`tests`](tests/) | unit and integration tests |
+| [`bin`](bin/) | helper scripts |
+| [`resources`](resources/) | additional resources like the FIT Profile XLSX |
+| [`resources/samples`](resources/samples/) | put your own, real `.fit` files here for integration test consumption (gitignored) |
+| [`resources/samples/default`](resources/samples/default/) | synthetic integration test files |
 
 ## License
 
@@ -298,33 +442,14 @@ MIT
 
 ### Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ (6.) Exporters (CSV, GPX, KML, TCX, Mapbox)             │  (only if needed)
-├─────────────────────────────────────────────────────────┤
-│  5.  Activity facade (Activity, Session, Lap, Record…)  │  eager API, typed domain
-├─────────────────────────────────────────────────────────┤
-│  4.  Message decoder (resolves Profile, scales values)  │  streamed API, Generator<Message>
-├─────────────────────────────────────────────────────────┤
-│  3.  Record decoder (definition + data → raw Message)   │
-├─────────────────────────────────────────────────────────┤
-│  2.  Binary stream (CRC, endian-aware reads)            │
-├─────────────────────────────────────────────────────────┤
-│  1.  PHP file handle / string                           │
-└─────────────────────────────────────────────────────────┘
-```
-
-Each layer is independently testable. Layer 4 is the streaming entry point; layer 5 is the eager facade.
-
-### Repo layout
-
-- [`src`](src/) — library source with the [`FitReader`](src/FitReader.php) entry point.
-- [`tests`](tests/) — unit and integration tests.
-- [`bin`](bin/) — helper scripts (see below).
-- [`resources`](resources/) — additional resources like the FIT Profile XLSX.
-- [`samples`](samples/) — put your own, real `.fit` files here for integration test consumption (gitignored)
-- [`samples/default`](samples/default/) — synthetic test files (see below).
-- [`demos`](demos/) — a progressive, runnable tour of the public API (run all with `bash demos/run.sh`).
+| Layer | Responsibility |
+|---|---|
+| 1. File reading/binary stream | CRC, endian-aware reads |
+| 2. Record decoder | definition + data → raw `Message` blocks |
+| 3. Message decoder | resolves Profile, scales values (provides streamed `Generator<Message>` API) |
+| 4. Activity facade | `Activity`, `Session`, `Lap`, `Record`, … (provides eager, typed domain API) |
+| 5. `Geo` toolkit | bounds, simplification, encoded polyline |
+| (6. Exporters) | CSV, GPX, KML, TCX, GeoJSON exporters and the Mapbox PNG renderer (all optional) |
 
 ### Regenerating the FIT Profile
 
@@ -361,10 +486,12 @@ Produces under `build/`:
 - `test-report-junit.xml` — JUnit XML for CI
 - `test-output.txt` — combined stdout + stderr + PHP error log of the phpunit run
 - `integration-tests/<sample>.md` — per-sample human-readable report
-- `integration-tests/<sample>.gpx`, `.csv` — GPX and CSV exports
+- `integration-tests/<sample>-{raw,normalized}.{gpx,csv,tcx,kml,geojson}` — every exporter, raw and normalized
+- `integration-tests/<sample>-geo.txt` — the Geo toolkit output: bounding box, center, and per-session encoded polylines
 - `integration-tests/<sample>.png` — Mapbox map, **only generated for samples under `samples/` (not `samples/default/`)** and only when a Mapbox token is available — in the `MAPBOX_TOKEN` env var, or `resources/mapbox-access-token.txt` file (gitignored).
 
 ### Contributing
 
 - Public API lives on [`FitReader`](src/FitReader.php) — add new entry points there.
 - New exporters belong under [`src/Export`](src/Export/).
+- Run `composer analyse` (PHPStan, level 8) and the test suite (PHPUnit) before pushing.

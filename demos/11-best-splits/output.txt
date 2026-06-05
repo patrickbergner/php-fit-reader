@@ -1,0 +1,14 @@
+──────────────────────────────────────────────────────────────────────
+11 · Best splits — fastest 1 km / 5 km from the data, no export needed
+──────────────────────────────────────────────────────────────────────
+
+Total: 12.00 km in 59:38  (avg 4:58/km)
+
+  Effort      Time     Pace       Starts at
+  ────────────────────────────────────────────
+  400 m       1:40     4:10/km    5:00 into the run
+  1 km        4:10     4:10/km    5:00 into the run
+  5 km        24:05    4:49/km    15:00 into the run
+  10 km       49:30    4:57/km    0:30 into the run
+
+(Each effort covers at least that distance — the window snaps to record boundaries.)

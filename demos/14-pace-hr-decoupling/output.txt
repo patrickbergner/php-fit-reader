@@ -1,0 +1,11 @@
+──────────────────────────────────────────────────────────────────────
+14 · Aerobic decoupling & training load
+──────────────────────────────────────────────────────────────────────
+
+                 1st half     2nd half    
+  avg pace       5:28/km      4:52/km     
+  avg HR         139 bpm      160 bpm     
+  efficiency     0.0219       0.0214        (speed ÷ HR)
+
+  Aerobic decoupling: +2.5%  (well coupled)
+  Training load (TRIMP): 126   (rest 60, max 182 bpm)

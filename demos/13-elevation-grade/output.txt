@@ -1,0 +1,11 @@
+──────────────────────────────────────────────────────────────────────
+13 · Elevation & grade profile
+──────────────────────────────────────────────────────────────────────
+
+Distance:        11.97 km
+Altitude:        32.0 m … 35.8 m  (range 3.8 m)
+Ascent/descent:  +35 m / -35 m   (from the session summary)
+Steepest grade:  +0.8% climb / -0.8% descent  (over 25m bins)
+
+  ▅▆▅▆█▇▇▇██▇▆▇▅▄▂▁▂▂▂▂▃▄▃▃▄▆▅▆▇▇▇▇██▇▇▇▆▅▅▅▄▃▂▃▂▁▂▂▂▁▂▃
+  32 m  low → high                                  36 m

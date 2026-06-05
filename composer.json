@@ -1,6 +1,6 @@
 {
     "name": "emontis/fit-reader",
-    "description": "PHP library for reading Garmin FIT activity files",
+    "description": "Library for reading Garmin FIT activity files",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -31,6 +31,7 @@
         "php": "^8.2"
     },
     "require-dev": {
+        "phpstan/phpstan": "^2",
         "phpunit/phpunit": "^13"
     },
     "autoload": {
@@ -47,5 +48,9 @@
         "bin/generate-default-samples",
         "bin/generate-profile"
     ],
+    "scripts": {
+        "analyze": "phpstan analyse",
+        "test": "phpunit --testsuite unit"
+    },
     "minimum-stability": "stable"
 }

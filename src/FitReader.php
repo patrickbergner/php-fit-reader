@@ -11,10 +11,15 @@ use Emontis\FitReader\Activity\DeriverFactory;
 use Emontis\FitReader\Activity\Lap;
 use Emontis\FitReader\Activity\Session;
 use Emontis\FitReader\Export\CsvWriter;
+use Emontis\FitReader\Export\GeoJsonWriter;
 use Emontis\FitReader\Export\GpxWriter;
 use Emontis\FitReader\Export\KmlWriter;
 use Emontis\FitReader\Export\MapboxRenderer;
 use Emontis\FitReader\Export\TcxWriter;
+use Emontis\FitReader\Geo\BoundingBox;
+use Emontis\FitReader\Geo\DouglasPeucker;
+use Emontis\FitReader\Geo\EncodedPolyline;
+use Emontis\FitReader\Geo\TrackPoints;
 use Emontis\FitReader\Io\BinaryStream;
 use Emontis\FitReader\Message\Message;
 use Emontis\FitReader\Protocol\Decoder;
@@ -62,6 +67,14 @@ use Emontis\FitReader\Protocol\Decoder;
  *   - FitReader::activityToKml($activity, $kmlPath)  write file
  *   - FitReader::activityToKmlString($activity)      returns the XML string
  *
+ * GeoJSON export (RFC 7946 FeatureCollection — one <LineString> per session in
+ * [lng, lat] order, for web maps like Leaflet/MapLibre/OpenLayers; needs no
+ * xmlwriter):
+ *   - FitReader::fitToGeoJson($fitPath, $geoJsonPath)    write file, returns Activity
+ *   - FitReader::fitToGeoJsonString($fitPath)            returns the JSON string
+ *   - FitReader::activityToGeoJson($activity, $path)     write file
+ *   - FitReader::activityToGeoJsonString($activity)      returns the JSON string
+ *
  * CSV dump — a single file written to the exact `$path` the caller names (no
  * suffixing; the caller owns the filename). The small per-message tables are
  * intended to be inlined elsewhere via {@see CsvWriter::buildMatrix()}:
@@ -75,6 +88,11 @@ use Emontis\FitReader\Protocol\Decoder;
  * fit Mapbox's URL budget). The access token is required:
  *   - FitReader::fitToMapPng($fitPath, $pngPath, $token)        write file
  *   - FitReader::activityToMapPng($activity, $pngPath, $token)  write file
+ *
+ * Geo toolkit — track-visualization primitives for feeding any map provider:
+ *   - FitReader::trackBounds($activityOrSession)   → ?BoundingBox (center/fitBounds)
+ *   - FitReader::encodedPolyline($session)         → Google/Mapbox polyline string
+ *   (and, directly: {@see EncodedPolyline}, {@see DouglasPeucker}, {@see TrackPoints})
  *
  * Normalization helpers (so callers only import FitReader):
  *   - FitReader::normalizer(...)    build a ContinuousTimelineNormalizer
@@ -281,6 +299,58 @@ final class FitReader
     }
 
     /**
+     * Decode a FIT activity file and write its GPS track(s) as a GeoJSON
+     * (RFC 7946) FeatureCollection — one <LineString> per session, ready for
+     * web maps (Leaflet/MapLibre/OpenLayers). Returns the decoded Activity so
+     * callers can inspect the data too.
+     */
+    public static function fitToGeoJson(
+        string $fitPath,
+        string $geoJsonPath,
+        bool $verifyCrc = true,
+        bool|array $normalize = false,
+    ): Activity {
+        $activity = self::activity($fitPath, verifyCrc: $verifyCrc);
+        (new GeoJsonWriter())->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
+        return $activity;
+    }
+
+    /**
+     * Decode a FIT activity file and return the GeoJSON document as a string.
+     */
+    public static function fitToGeoJsonString(
+        string $fitPath,
+        bool $verifyCrc = true,
+        bool|array $normalize = false,
+    ): string {
+        return (new GeoJsonWriter())->toString(
+            self::activity($fitPath, verifyCrc: $verifyCrc),
+            self::recordResolver($normalize),
+        );
+    }
+
+    /**
+     * Write the GPS track(s) of an already-decoded Activity as a GeoJSON file.
+     */
+    public static function activityToGeoJson(
+        Activity $activity,
+        string $geoJsonPath,
+        bool|array $normalize = false,
+    ): void {
+        (new GeoJsonWriter())->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
+    }
+
+    /**
+     * Render the GPS track(s) of an already-decoded Activity as a GeoJSON string.
+     */
+    public static function activityToGeoJsonString(
+        Activity $activity,
+        bool|array $normalize = false,
+    ): string {
+        return (new GeoJsonWriter())->toString($activity, self::recordResolver($normalize));
+    }
+
+    /**
      * Pick the per-session record resolver for export. `$normalize`:
      *   - false ⇒ the session's raw records;
      *   - true  ⇒ default continuous-timeline normalization;
@@ -458,6 +528,45 @@ final class FitReader
             $accessToken,
             $styleId,
         );
+    }
+
+    /**
+     * Geographic bounding box of an Activity's (or single Session's) GPS track
+     * — the framing primitive map providers want: a center/zoom for a static
+     * image, or a `fitBounds` rectangle for a web map. Built from the raw GPS
+     * fixes across every session. Returns null when there is no GPS data.
+     *
+     * @see BoundingBox::center()
+     */
+    public static function trackBounds(Activity|Session $source): ?BoundingBox
+    {
+        $records = $source instanceof Session
+            ? $source->records
+            : array_merge(...array_map(static fn (Session $s): array => $s->records, $source->sessions));
+
+        return BoundingBox::fromPoints(TrackPoints::of($records));
+    }
+
+    /**
+     * Encode a Session's GPS track as a Google "encoded polyline" — the compact
+     * string both the Mapbox Static Images API (`path-…`) and the Google Maps
+     * Static API (`path=enc:…`) accept as a route overlay. Returns '' for a
+     * session with no GPS.
+     *
+     * `$precision` is the coordinate precision (5 for Mapbox/Google, 6 also
+     * valid). `$simplifyToleranceDegrees` (> 0) first thins the track with
+     * {@see DouglasPeucker} — useful to keep the resulting URL short.
+     */
+    public static function encodedPolyline(
+        Session $session,
+        int $precision = 5,
+        float $simplifyToleranceDegrees = 0.0,
+    ): string {
+        $points = TrackPoints::of($session->records);
+        if ($simplifyToleranceDegrees > 0.0) {
+            $points = DouglasPeucker::simplify($points, $simplifyToleranceDegrees);
+        }
+        return EncodedPolyline::encode($points, $precision);
     }
 
     /**

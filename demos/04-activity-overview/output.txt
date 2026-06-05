@@ -16,4 +16,4 @@ Events: 2
   09:00:00  timer / start
   09:59:38  timer / stop_all
 
-Raw activity summary keys: total_timer_time, num_sessions, type, event, event_type, timestamp
+Raw activity summary keys: total_timer_time, num_sessions, type, event, event_type, local_timestamp, timestamp

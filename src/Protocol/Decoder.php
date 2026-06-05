@@ -26,6 +26,15 @@ use Emontis\FitReader\Value\ValueDecoder;
 final class Decoder
 {
     private const COMPRESSED_TIMESTAMP_FIELD_NUM = 253;
+    private const FIELD_DESCRIPTION_GLOBAL_NUM   = 206;
+
+    /**
+     * Developer (Connect IQ) field descriptions seen so far, keyed
+     * "developerDataIndex:fieldDefNumber".
+     *
+     * @var array<string, array{name: string, baseType: BaseType, scale: ?int, offset: ?int, units: ?string}>
+     */
+    private array $devFieldDescriptions = [];
 
     public function __construct(
         private readonly BinaryStream $stream,
@@ -61,6 +70,9 @@ final class Decoder
             [$message, $newTs] = $this->readDataMessage($def, $rh, $lastTs);
             if ($newTs !== null) {
                 $lastTs = $newTs;
+            }
+            if ($def->globalNum === self::FIELD_DESCRIPTION_GLOBAL_NUM) {
+                $this->registerFieldDescription($message);
             }
             yield $message;
         }
@@ -165,10 +177,17 @@ final class Decoder
             $this->writeField($fields, $profileField, $fdef->fieldDefNum, $decoded);
         }
 
-        // Skip dev field bytes (we keep them as raw under their fieldNum key).
+        // Developer (Connect IQ) fields: resolve against any field_description
+        // seen so far — name, base type, scale and offset; fall back to raw
+        // bytes under dev_field_N when the field hasn't been described.
         foreach ($def->devFields as $dev) {
-            $raw = $this->stream->read($dev->size);
-            $fields["dev_field_{$dev->fieldNum}"] = $raw;
+            $raw  = $this->stream->read($dev->size);
+            $desc = $this->devFieldDescriptions["{$dev->devDataIndex}:{$dev->fieldNum}"] ?? null;
+            if ($desc === null) {
+                $fields["dev_field_{$dev->fieldNum}"] = $raw;
+                continue;
+            }
+            $fields[$desc['name']] = $this->decodeDevField($raw, $desc, $def->littleEndian);
         }
 
         $this->collapsePosition($fields);
@@ -183,6 +202,75 @@ final class Decoder
     }
 
     /**
+     * Record a developer `field_description` (global 206) so that later data
+     * messages carrying that developer field can be decoded by name, base
+     * type, scale and offset rather than left as raw bytes.
+     */
+    private function registerFieldDescription(Message $message): void
+    {
+        $devIdx   = $message->fields['developer_data_index'] ?? null;
+        $fieldNum = $message->fields['field_definition_number'] ?? null;
+        if (!is_int($devIdx) || !is_int($fieldNum)) {
+            return;
+        }
+
+        $baseType = $this->resolveBaseType($message->fields['fit_base_type_id'] ?? null);
+        if ($baseType === null) {
+            return;
+        }
+
+        $name   = $message->fields['field_name'] ?? null;
+        $scale  = $message->fields['scale'] ?? null;
+        $offset = $message->fields['offset'] ?? null;
+        $units  = $message->fields['units'] ?? null;
+
+        $this->devFieldDescriptions["{$devIdx}:{$fieldNum}"] = [
+            'name'     => is_string($name) && $name !== '' ? $name : "dev_field_{$fieldNum}",
+            'baseType' => $baseType,
+            'scale'    => is_int($scale) ? $scale : null,
+            'offset'   => is_int($offset) ? $offset : null,
+            'units'    => is_string($units) ? $units : null,
+        ];
+    }
+
+    /**
+     * The `fit_base_type_id` reaches us either as an enum label (e.g. "uint16")
+     * or, if unmapped, the raw byte. Resolve either to a {@see BaseType}.
+     */
+    private function resolveBaseType(mixed $fitBaseTypeId): ?BaseType
+    {
+        if (is_int($fitBaseTypeId)) {
+            return BaseType::tryFromByte($fitBaseTypeId);
+        }
+        if (is_string($fitBaseTypeId)) {
+            $byte = Profile::enumValue('fit_base_type', $fitBaseTypeId);
+            return $byte !== null ? BaseType::tryFromByte($byte) : null;
+        }
+        return null;
+    }
+
+    /**
+     * Decode one developer field's raw bytes using its description, applying
+     * scale/offset to numeric values the way native profile fields are.
+     *
+     * @param array{name: string, baseType: BaseType, scale: ?int, offset: ?int, units: ?string} $desc
+     */
+    private function decodeDevField(string $raw, array $desc, bool $littleEndian): mixed
+    {
+        $value = ValueDecoder::decode($raw, $desc['baseType'], $littleEndian);
+        if (!is_int($value) && !is_float($value)) {
+            return $value; // strings / arrays / null pass through unscaled
+        }
+        if ($desc['scale'] !== null && $desc['scale'] !== 0) {
+            $value = $value / $desc['scale'];
+        }
+        if ($desc['offset'] !== null) {
+            $value -= $desc['offset'];
+        }
+        return $value;
+    }
+
+    /**
      * @param array<string|int, mixed> $fields
      */
     private function writeField(array &$fields, ?FieldDef $profileField, int $fieldDefNum, mixed $decoded): void
@@ -191,7 +279,7 @@ final class Decoder
             // Still record the key as null so callers can distinguish
             // "declared but invalid" from "not declared". Use the resolved
             // name when available.
-            $key          = $profileField?->name ?? $fieldDefNum;
+            $key          = $profileField !== null ? $profileField->name : $fieldDefNum;
             $fields[$key] = null;
             return;
         }

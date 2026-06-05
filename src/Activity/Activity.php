@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Emontis\FitReader\Activity;
 
+use Emontis\FitReader\Value\FitTimestamp;
+
 final readonly class Activity
 {
     /**
@@ -47,5 +49,53 @@ final readonly class Activity
         if (is_float($v)) return $v;
         if (is_int($v))   return (float) $v;
         return null;
+    }
+
+    /**
+     * Activity-wide UTC offset in seconds (e.g. 7200 for CEST), derived from
+     * the `activity` summary's `local_timestamp` (local wall-clock) versus
+     * `timestamp` (the same instant in UTC). Null when the file doesn't carry
+     * a local timestamp. FIT timestamps are UTC; this recovers the local zone.
+     */
+    public function utcOffsetSeconds(): ?int
+    {
+        $summary = $this->summary;
+        if ($summary === null) {
+            return null;
+        }
+        $ts    = $summary['timestamp'] ?? null;
+        $local = $summary['local_timestamp'] ?? null;
+        if ($ts instanceof \DateTimeInterface && is_int($local)) {
+            return $local - ($ts->getTimestamp() - FitTimestamp::FIT_EPOCH_OFFSET);
+        }
+        return null;
+    }
+
+    /** `timeCreated()` expressed in the activity's local time zone. */
+    public function localTimeCreated(): ?\DateTimeImmutable
+    {
+        return $this->toLocalTime($this->timeCreated());
+    }
+
+    /**
+     * Express any UTC instant from this activity (a session start, a record
+     * timestamp, …) in its local time zone. Returns the value unchanged (UTC)
+     * when no local offset is known, and null for a null input.
+     */
+    public function toLocalTime(?\DateTimeInterface $utc): ?\DateTimeImmutable
+    {
+        if ($utc === null) {
+            return null;
+        }
+        $dt     = \DateTimeImmutable::createFromInterface($utc);
+        $offset = $this->utcOffsetSeconds();
+        return $offset === null ? $dt : $dt->setTimezone(self::offsetZone($offset));
+    }
+
+    private static function offsetZone(int $seconds): \DateTimeZone
+    {
+        $sign = $seconds < 0 ? '-' : '+';
+        $abs  = abs($seconds);
+        return new \DateTimeZone(sprintf('%s%02d:%02d', $sign, intdiv($abs, 3600), intdiv($abs % 3600, 60)));
     }
 }

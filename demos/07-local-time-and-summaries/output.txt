@@ -1,0 +1,20 @@
+──────────────────────────────────────────────────────────────────────
+07 · Local time, moving time & session averages
+──────────────────────────────────────────────────────────────────────
+
+Time — FIT stores UTC; local is recovered from the activity's offset
+  created (UTC)         2026-01-15 09:00:00
+  UTC offset            +3600 s  (+1 h)
+  created (local)       2026-01-15 10:00:00 +01:00
+  session start (local) 10:00:00 +01:00
+
+Moving vs. elapsed time
+  elapsed (wall-clock)  59:38
+  timer (moving)        59:38
+  movingTime()          59:38
+  stoppedTime()         0:00
+
+Session-average running dynamics
+  avg vertical oscillation  81.5 mm
+  avg stance time           215.4 ms
+  avg step length           1129.4 mm

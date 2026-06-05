@@ -1,0 +1,17 @@
+──────────────────────────────────────────────────────────────────────
+18 · KML export (Google Earth) — raw, normalized, and as a string
+──────────────────────────────────────────────────────────────────────
+
+raw KML        → tiergarten-raw.kml (626769 bytes)
+normalized KML → tiergarten-normalized.kml (635967 bytes)
+
+activityToKmlString(): 626769 bytes. First lines:
+
+  <?xml version="1.0" encoding="UTF-8"?>
+  <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+    <Document>
+      <name>Tiergarten Run</name>
+      <Style id="fitr_line">
+        <LineStyle>
+          <color>ff0000ff</color>
+          <width>4</width>

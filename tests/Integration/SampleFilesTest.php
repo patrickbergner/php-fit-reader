@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class SampleFilesTest extends TestCase
 {
-    private const ROOT_SAMPLE_DIR = __DIR__ . '/../../samples';
+    private const ROOT_SAMPLE_DIR = __DIR__ . '/../../resources/samples';
     private const ROOT_BUILD_DIR  = __DIR__ . '/../../build/integration-tests';
     private const TOKEN_FILE      = __DIR__ . '/../../resources/mapbox-access-token.txt';
 
@@ -110,6 +110,13 @@ final class SampleFilesTest extends TestCase
         FitReader::activityToKml($activity, $buildDir . "/{$base}-raw.kml", name: $base);
         FitReader::activityToKml($activity, $buildDir . "/{$base}-normalized.kml", name: $base, normalize: true);
 
+        // GeoJSON (web maps: Leaflet/MapLibre), raw + normalized, mirroring the KML pair.
+        FitReader::activityToGeoJson($activity, $buildDir . "/{$base}-raw.geojson");
+        FitReader::activityToGeoJson($activity, $buildDir . "/{$base}-normalized.geojson", normalize: true);
+
+        // Geo toolkit (bounding box + encoded polylines) dumped as plain text.
+        file_put_contents($buildDir . "/{$base}-geo.txt", self::geoArtifact($activity));
+
         // PNG map generation is skipped for synthetic samples under
         // samples/default/ — those tracks are made-up coordinates that
         // would just burn Mapbox quota rendering noise.
@@ -140,6 +147,9 @@ final class SampleFilesTest extends TestCase
         self::assertFileExists($buildDir . "/{$base}-normalized.tcx");
         self::assertFileExists($buildDir . "/{$base}-raw.kml");
         self::assertFileExists($buildDir . "/{$base}-normalized.kml");
+        self::assertFileExists($buildDir . "/{$base}-raw.geojson");
+        self::assertFileExists($buildDir . "/{$base}-normalized.geojson");
+        self::assertFileExists($buildDir . "/{$base}-geo.txt");
     }
 
     /**
@@ -177,6 +187,49 @@ final class SampleFilesTest extends TestCase
             'speed_kmh'       => FitReader::perRun(fn() => FitReader::kilometersPerHourFromGps(10)),
             'pace_min_per_km' => FitReader::minutesPerKilometerFromGps(10),
         ];
+    }
+
+    /**
+     * Plain-text dump of the Geo toolkit on a real track: the activity's
+     * bounding box + center, then each session's GPS point count and encoded
+     * polyline (full, plus a simplified one). Captures "everything we have" for
+     * map prep on the sample. Gracefully reports "no GPS data" when a sample
+     * carries no positions (`trackBounds()` is null).
+     */
+    private static function geoArtifact(Activity $activity): string
+    {
+        $bounds = FitReader::trackBounds($activity);
+        if ($bounds === null) {
+            return "No GPS data — no bounding box or polyline.\n";
+        }
+
+        $center = $bounds->center();
+        $out = [];
+        $out[] = 'Bounding box (all sessions):';
+        $out[] = sprintf('  min     %.6f, %.6f', $bounds->minLat, $bounds->minLng);
+        $out[] = sprintf('  max     %.6f, %.6f', $bounds->maxLat, $bounds->maxLng);
+        $out[] = sprintf('  center  %.6f, %.6f', $center->lat, $center->lng);
+        $out[] = '';
+
+        foreach ($activity->sessions as $i => $session) {
+            $full = FitReader::encodedPolyline($session);
+            $thin = FitReader::encodedPolyline($session, 5, 1e-4);
+            $points = 0;
+            foreach ($session->records as $r) {
+                if ($r->position() !== null) {
+                    $points++;
+                }
+            }
+            $out[] = sprintf('Session %d:', $i + 1);
+            $out[] = sprintf('  GPS points: %d', $points);
+            $out[] = sprintf('  encoded polyline (precision 5, %d chars):', strlen($full));
+            $out[] = '    ' . $full;
+            $out[] = sprintf('  simplified (~11 m, %d chars):', strlen($thin));
+            $out[] = '    ' . $thin;
+            $out[] = '';
+        }
+
+        return implode("\n", $out);
     }
 
     private function writeReport(Activity $activity, string $sourcePath, string $reportPath, ?string $pngPath = null): void
@@ -252,6 +305,9 @@ final class SampleFilesTest extends TestCase
         $md[] = sprintf('- [TCX (normalized)](%s-normalized.tcx)', $base);
         $md[] = sprintf('- [KML (raw)](%s-raw.kml)', $base);
         $md[] = sprintf('- [KML (normalized)](%s-normalized.kml)', $base);
+        $md[] = sprintf('- [GeoJSON (raw)](%s-raw.geojson)', $base);
+        $md[] = sprintf('- [GeoJSON (normalized)](%s-normalized.geojson)', $base);
+        $md[] = sprintf('- [Track geometry (bounds + polyline)](%s-geo.txt)', $base);
         $md[] = '';
 
         file_put_contents($reportPath, implode("\n", $md));

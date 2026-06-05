@@ -41,7 +41,7 @@ $map = [
     'xcSki'                   => 'xc-ski',
 ];
 
-$outDir = dirname(__DIR__) . '/samples/default';
+$outDir = dirname(__DIR__) . '/resources/samples/default';
 if (!is_dir($outDir) && !mkdir($outDir, 0755, true) && !is_dir($outDir)) {
     fwrite(STDERR, "Cannot create {$outDir}\n");
     exit(1);

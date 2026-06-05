@@ -21,7 +21,7 @@ final class BinaryStream
     private int $position = 0;
     private Crc16 $runningCrc;
 
-    /** @var resource $handle */
+    /** @param resource $handle */
     public function __construct($handle, ?Crc16 $crc = null)
     {
         if (!is_resource($handle)) {

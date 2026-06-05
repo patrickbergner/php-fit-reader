@@ -245,7 +245,7 @@ final class ProfileGenerator
         $raw = trim($raw);
         if ($raw === '') return null;
         if (str_starts_with($raw, '0x') || str_starts_with($raw, '0X')) {
-            return hexdec(substr($raw, 2));
+            return (int) hexdec(substr($raw, 2));
         }
         if (ctype_digit($raw) || ($raw[0] === '-' && ctype_digit(substr($raw, 1)))) {
             return (int) $raw;

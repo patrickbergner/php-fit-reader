@@ -48,7 +48,9 @@ final class Profile
     {
         if (self::$messages === null) {
             $path = __DIR__ . '/Generated/MessageDefinitions.php';
-            self::$messages = is_file($path) ? (require $path) : [];
+            /** @var array<int, MessageDef> $loaded */
+            $loaded = is_file($path) ? require $path : [];
+            self::$messages = $loaded;
         }
         return self::$messages;
     }
@@ -58,7 +60,9 @@ final class Profile
     {
         if (self::$types === null) {
             $path = __DIR__ . '/Generated/Types.php';
-            self::$types = is_file($path) ? (require $path) : [];
+            /** @var array<string, array<int, string>> $loaded */
+            $loaded = is_file($path) ? require $path : [];
+            self::$types = $loaded;
         }
         return self::$types;
     }

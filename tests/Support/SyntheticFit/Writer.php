@@ -47,6 +47,7 @@ final class Writer
         'device_info'     => 23,
         'activity'        => 34,
         'file_creator'    => 49,
+        'field_description' => 206,
     ];
 
     /** @var array<string, int>  cache key → local type id (0..15) */
@@ -103,9 +104,77 @@ final class Writer
         }
         $localType = $this->defCache[$cacheKey];
 
-        $this->body .= chr($localType);
+        $this->body .= self::byte($localType);
         foreach ($present as $info) {
             $this->body .= self::encodeValue($info['def'], $info['size'], $info['value']);
+        }
+        return $this;
+    }
+
+    /**
+     * Append a message that also carries developer (Connect IQ) fields. Emits a
+     * definition with the developer-data flag (0x20) and a developer
+     * field-definition section, then the data. Each $devFields entry is the raw
+     * (unscaled) value the decoder will scale via its `field_description`.
+     *
+     * @param array<string, mixed> $fields
+     * @param list<array{fieldNum: int, devDataIndex: int, baseType: BaseType, value: int|float}> $devFields
+     */
+    public function addWithDeveloperFields(string $messageName, array $fields, array $devFields): self
+    {
+        $msgDef = self::messageDef($messageName);
+
+        $present = [];
+        foreach ($fields as $name => $value) {
+            $fdef = self::fieldDefByName($msgDef, $name);
+            if ($fdef === null) {
+                throw new \InvalidArgumentException("Unknown field '{$name}' on message '{$messageName}'");
+            }
+            $present[$fdef->fieldDefNum] = [
+                'def'   => $fdef,
+                'size'  => self::fieldSize($fdef, $value),
+                'value' => $value,
+            ];
+        }
+        ksort($present);
+
+        // Cache the definition (native + developer field shape) so repeated
+        // records reuse one definition instead of re-emitting it each call.
+        $cacheKey = $messageName . '|';
+        foreach ($present as $fid => $info) {
+            $cacheKey .= $fid . ':' . $info['size'] . ',';
+        }
+        $cacheKey .= '|dev|';
+        foreach ($devFields as $dev) {
+            $cacheKey .= $dev['fieldNum'] . ':' . $dev['baseType']->size() . ':' . $dev['devDataIndex'] . ',';
+        }
+
+        if (!isset($this->defCache[$cacheKey])) {
+            $localType = $this->nextLocalType;
+            $this->nextLocalType = ($this->nextLocalType + 1) & 0x0F;
+            $this->defCache[$cacheKey] = $localType;
+
+            // Definition with the developer-data flag set.
+            $def = self::byte(0x40 | 0x20 | $localType) . "\x00" . "\x00"
+                . pack('v', $msgDef->globalNum) . self::byte(count($present));
+            foreach ($present as $info) {
+                $def .= self::byte($info['def']->fieldDefNum) . self::byte($info['size']) . self::byte($info['def']->baseType->value);
+            }
+            $def .= self::byte(count($devFields));
+            foreach ($devFields as $dev) {
+                $def .= self::byte($dev['fieldNum']) . self::byte($dev['baseType']->size()) . self::byte($dev['devDataIndex']);
+            }
+            $this->body .= $def;
+        }
+        $localType = $this->defCache[$cacheKey];
+
+        // Data: native fields then developer fields, in declaration order.
+        $this->body .= self::byte($localType);
+        foreach ($present as $info) {
+            $this->body .= self::encodeValue($info['def'], $info['size'], $info['value']);
+        }
+        foreach ($devFields as $dev) {
+            $this->body .= self::packBase($dev['baseType'], $dev['value']);
         }
         return $this;
     }
@@ -164,17 +233,23 @@ final class Writer
      */
     private static function definitionBytes(int $localType, MessageDef $msg, array $present): string
     {
-        $out = chr(0x40 | $localType)   // definition header
-            . "\x00"                    // reserved
-            . "\x00"                    // arch: 0 = little-endian
+        $out = self::byte(0x40 | $localType)   // definition header
+            . "\x00"                           // reserved
+            . "\x00"                           // arch: 0 = little-endian
             . pack('v', $msg->globalNum)
-            . chr(count($present));
+            . self::byte(count($present));
         foreach ($present as $info) {
-            $out .= chr($info['def']->fieldDefNum)
-                .  chr($info['size'])
-                .  chr($info['def']->baseType->value);
+            $out .= self::byte($info['def']->fieldDefNum)
+                .  self::byte($info['size'])
+                .  self::byte($info['def']->baseType->value);
         }
         return $out;
+    }
+
+    /** Single byte, masked to 0-255 so the value satisfies chr()'s int<0,255>. */
+    private static function byte(int $n): string
+    {
+        return chr($n & 0xFF);
     }
 
     private static function fieldSize(FieldDef $def, mixed $value): int
