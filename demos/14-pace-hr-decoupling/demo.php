@@ -19,7 +19,7 @@ demo_title('14', 'Aerobic decoupling & training load');
 //   • Training load (Banister TRIMP): duration weighted by HR intensity.
 
 $restHr = 60;
-$maxHr  = $session->maxHeartRate() ?? 190;
+$maxHr  = $session->maxHeartRate ?? 190;
 
 // Time-weighted sums of speed and HR over an arbitrary record span.
 $accumulate = static function (array $records): array {
@@ -28,7 +28,7 @@ $accumulate = static function (array $records): array {
     $secs     = 0.0;
     $prev     = null;
     foreach ($records as $r) {
-        $t = $r->timestamp();
+        $t = $r->timestamp;
         if ($t === null) {
             continue;
         }
@@ -38,7 +38,7 @@ $accumulate = static function (array $records): array {
             $sumHr    += $prev['hr'] * $dt;
             $secs     += $dt;
         }
-        $prev = ['t' => $t, 'spd' => $r->speed(), 'hr' => $r->heartRate()];
+        $prev = ['t' => $t, 'spd' => $r->speed, 'hr' => $r->heartRate];
     }
     return ['speed' => $secs > 0 ? $sumSpeed / $secs : 0.0, 'hr' => $secs > 0 ? $sumHr / $secs : 0.0, 'secs' => $secs];
 };
@@ -69,7 +69,7 @@ printf("\n  Aerobic decoupling: %+.1f%%  (%s)\n",
 $trimp = 0.0;
 $prev  = null;
 foreach ($records as $r) {
-    $t  = $r->timestamp();
+    $t  = $r->timestamp;
     if ($t === null) {
         continue;
     }
@@ -78,7 +78,7 @@ foreach ($records as $r) {
         $hrr   = max(0.0, min(1.0, ($prev['hr'] - $restHr) / ($maxHr - $restHr)));
         $trimp += $dtMin * $hrr * 0.64 * exp(1.92 * $hrr);
     }
-    $prev = ['t' => $t, 'hr' => $r->heartRate()];
+    $prev = ['t' => $t, 'hr' => $r->heartRate];
 }
 
 printf("  Training load (TRIMP): %.0f   (rest %d, max %d bpm)\n", $trimp, $restHr, $maxHr);

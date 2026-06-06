@@ -6,7 +6,7 @@ namespace Emontis\FitReader\Tests\Unit\Protocol;
 
 use Emontis\FitReader\FitReader;
 use Emontis\FitReader\Protocol\BaseType;
-use Emontis\FitReader\Tests\Support\SyntheticFit\Writer;
+use Emontis\FitReader\Util\SyntheticFit\Writer;
 use PHPUnit\Framework\TestCase;
 
 final class DeveloperFieldsTest extends TestCase
@@ -24,7 +24,7 @@ final class DeveloperFieldsTest extends TestCase
     {
         $t0 = new \DateTimeImmutable('2026-06-01T08:00:00+00:00');
 
-        $bytes = (new Writer())
+        $bytes = new Writer()
             ->add('file_id', [
                 'type'          => 'activity',
                 'manufacturer'  => 'garmin',
@@ -66,7 +66,7 @@ final class DeveloperFieldsTest extends TestCase
         $record = FitReader::activity($this->writeTemp($bytes))->sessions[0]->records[0];
 
         // Native field still decodes alongside.
-        self::assertSame(150, $record->heartRate());
+        self::assertSame(150, $record->heartRate);
         // Developer fields resolve to their declared names…
         self::assertSame(285, $record->developerField('Stryd Power'));
         // …with the field_description scale applied (1050 / 100).
@@ -79,7 +79,7 @@ final class DeveloperFieldsTest extends TestCase
     {
         $t0 = new \DateTimeImmutable('2026-06-01T08:00:00+00:00');
 
-        $bytes = (new Writer())
+        $bytes = new Writer()
             ->add('file_id', [
                 'type' => 'activity', 'manufacturer' => 'garmin',
                 'product' => 1, 'serial_number' => 1, 'time_created' => $t0,
@@ -94,7 +94,7 @@ final class DeveloperFieldsTest extends TestCase
 
         $record = FitReader::activity($this->writeTemp($bytes))->sessions[0]->records[0];
 
-        self::assertSame(140, $record->heartRate());
+        self::assertSame(140, $record->heartRate);
         // No field_description ⇒ the value stays as raw bytes under dev_field_N.
         self::assertNull($record->developerField('whatever'));
         self::assertIsString($record->field('dev_field_7'));

@@ -8,13 +8,17 @@ use Emontis\FitReader\Message\Message;
 
 final class Session
 {
-    /** Lazily-computed; not readonly so it can be cached on first access. */
+    /**
+     * Lazily-computed; not readonly so it can be cached on first access.
+     *
+     * @var list<Record>|null
+     */
     private ?array $normalizedCache = null;
 
     /**
      * @param array<string|int, mixed> $summary
-     * @param Lap[]    $laps
-     * @param Record[] $records  flattened across all laps for convenience
+     * @param list<Lap>    $laps
+     * @param list<Record> $records  flattened across all laps for convenience
      */
     public function __construct(
         public readonly array $summary,
@@ -23,138 +27,153 @@ final class Session
     ) {
     }
 
+    /**
+     * @param list<Lap>    $laps
+     * @param list<Record> $allRecords
+     */
     public static function build(Message $m, array $laps, array $allRecords): self
     {
         return new self($m->fields, $laps, $allRecords);
     }
 
-    public function sport(): ?string
-    {
-        $v = $this->summary['sport'] ?? null;
-        return is_string($v) ? $v : null;
-    }
-
-    public function subSport(): ?string
-    {
-        $v = $this->summary['sub_sport'] ?? null;
-        return is_string($v) ? $v : null;
-    }
-
-    public function startTime(): ?\DateTimeImmutable
-    {
-        $v = $this->summary['start_time'] ?? null;
-        return $v instanceof \DateTimeImmutable ? $v : null;
-    }
-
-    public function totalDistance(): ?float
-    {
-        return self::asFloat($this->summary['total_distance'] ?? null);
-    }
-
-    public function totalTimerTime(): ?float
-    {
-        return self::asFloat($this->summary['total_timer_time'] ?? null);
-    }
-
-    public function totalElapsedTime(): ?float
-    {
-        return self::asFloat($this->summary['total_elapsed_time'] ?? null);
-    }
-
-    public function avgHeartRate(): ?int
-    {
-        $v = $this->summary['avg_heart_rate'] ?? null;
-        if (is_int($v) && $v > 0) {
-            return $v;
+    public ?string $sport {
+        get {
+            $v = $this->summary['sport'] ?? null;
+            return is_string($v) ? $v : null;
         }
-        return $this->aggregateRaw('heart_rate', 'avg', zeroIsInvalid: true);
     }
 
-    public function maxHeartRate(): ?int
-    {
-        $v = $this->summary['max_heart_rate'] ?? null;
-        if (is_int($v) && $v > 0) {
-            return $v;
+    public ?string $subSport {
+        get {
+            $v = $this->summary['sub_sport'] ?? null;
+            return is_string($v) ? $v : null;
         }
-        return $this->aggregateRaw('heart_rate', 'max', zeroIsInvalid: true);
     }
 
-    public function avgCadence(): ?int
-    {
-        $v = $this->summary['avg_cadence'] ?? null;
-        if (is_int($v)) {
-            return $v;
+    public ?\DateTimeImmutable $startTime {
+        get {
+            $v = $this->summary['start_time'] ?? null;
+            return $v instanceof \DateTimeImmutable ? $v : null;
         }
-        return $this->aggregateRaw('cadence', 'avg', zeroIsInvalid: false);
     }
 
-    public function maxCadence(): ?int
-    {
-        $v = $this->summary['max_cadence'] ?? null;
-        if (is_int($v)) {
-            return $v;
+    public ?float $totalDistance {
+        get => self::asFloat($this->summary['total_distance'] ?? null);
+    }
+
+    public ?float $totalTimerTime {
+        get => self::asFloat($this->summary['total_timer_time'] ?? null);
+    }
+
+    public ?float $totalElapsedTime {
+        get => self::asFloat($this->summary['total_elapsed_time'] ?? null);
+    }
+
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $avgHeartRate {
+        get {
+            $v = $this->summary['avg_heart_rate'] ?? null;
+            if (is_int($v) && $v > 0) {
+                return $v;
+            }
+            return $this->aggregateRaw('heart_rate', 'avg', zeroIsInvalid: true);
         }
-        return $this->aggregateRaw('cadence', 'max', zeroIsInvalid: false);
     }
 
-    public function avgPower(): ?int
-    {
-        $v = $this->summary['avg_power'] ?? null;
-        if (is_int($v)) {
-            return $v;
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $maxHeartRate {
+        get {
+            $v = $this->summary['max_heart_rate'] ?? null;
+            if (is_int($v) && $v > 0) {
+                return $v;
+            }
+            return $this->aggregateRaw('heart_rate', 'max', zeroIsInvalid: true);
         }
-        return $this->aggregateRaw('power', 'avg', zeroIsInvalid: false);
     }
 
-    public function maxPower(): ?int
-    {
-        $v = $this->summary['max_power'] ?? null;
-        if (is_int($v)) {
-            return $v;
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $avgCadence {
+        get {
+            $v = $this->summary['avg_cadence'] ?? null;
+            if (is_int($v)) {
+                return $v;
+            }
+            return $this->aggregateRaw('cadence', 'avg', zeroIsInvalid: false);
         }
-        return $this->aggregateRaw('power', 'max', zeroIsInvalid: false);
     }
 
-    public function totalCalories(): ?int
-    {
-        $v = $this->summary['total_calories'] ?? null;
-        return is_int($v) ? $v : null;
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $maxCadence {
+        get {
+            $v = $this->summary['max_cadence'] ?? null;
+            if (is_int($v)) {
+                return $v;
+            }
+            return $this->aggregateRaw('cadence', 'max', zeroIsInvalid: false);
+        }
     }
 
-    public function totalAscent(): ?int
-    {
-        $v = $this->summary['total_ascent'] ?? null;
-        return is_int($v) ? $v : null;
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $avgPower {
+        get {
+            $v = $this->summary['avg_power'] ?? null;
+            if (is_int($v)) {
+                return $v;
+            }
+            return $this->aggregateRaw('power', 'avg', zeroIsInvalid: false);
+        }
     }
 
-    public function totalDescent(): ?int
-    {
-        $v = $this->summary['total_descent'] ?? null;
-        return is_int($v) ? $v : null;
+    /** Summary value when present, else a one-pass scan of the records (not memoized). */
+    public ?int $maxPower {
+        get {
+            $v = $this->summary['max_power'] ?? null;
+            if (is_int($v)) {
+                return $v;
+            }
+            return $this->aggregateRaw('power', 'max', zeroIsInvalid: false);
+        }
+    }
+
+    public ?int $totalCalories {
+        get {
+            $v = $this->summary['total_calories'] ?? null;
+            return is_int($v) ? $v : null;
+        }
+    }
+
+    public ?int $totalAscent {
+        get {
+            $v = $this->summary['total_ascent'] ?? null;
+            return is_int($v) ? $v : null;
+        }
+    }
+
+    public ?int $totalDescent {
+        get {
+            $v = $this->summary['total_descent'] ?? null;
+            return is_int($v) ? $v : null;
+        }
     }
 
     /** Average vertical oscillation in millimetres. */
-    public function avgVerticalOscillation(): ?float
-    {
-        return self::asFloat($this->summary['avg_vertical_oscillation'] ?? null);
+    public ?float $avgVerticalOscillation {
+        get => self::asFloat($this->summary['avg_vertical_oscillation'] ?? null);
     }
 
     /** Average ground-contact (stance) time in milliseconds. */
-    public function avgStanceTime(): ?float
-    {
-        return self::asFloat($this->summary['avg_stance_time'] ?? null);
+    public ?float $avgStanceTime {
+        get => self::asFloat($this->summary['avg_stance_time'] ?? null);
     }
 
     /** Average stance time as a percent of the stride. */
-    public function avgStanceTimePercent(): ?float
-    {
-        return self::asFloat($this->summary['avg_stance_time_percent'] ?? null);
+    public ?float $avgStanceTimePercent {
+        get => self::asFloat($this->summary['avg_stance_time_percent'] ?? null);
     }
 
     /** Average step length in millimetres. */
-    public function avgStepLength(): ?float
-    {
-        return self::asFloat($this->summary['avg_step_length'] ?? null);
+    public ?float $avgStepLength {
+        get => self::asFloat($this->summary['avg_step_length'] ?? null);
     }
 
     /**
@@ -165,7 +184,7 @@ final class Session
      */
     public function movingTime(float $maxGapSeconds = 30.0): ?float
     {
-        $timer = $this->totalTimerTime();
+        $timer = $this->totalTimerTime;
         if ($timer !== null) {
             return $timer;
         }
@@ -174,7 +193,7 @@ final class Session
         $prev   = null;
         $any    = false;
         foreach ($this->records as $r) {
-            $t = $r->timestamp()?->getTimestamp();
+            $t = $r->timestamp?->getTimestamp();
             if ($t === null) {
                 continue;
             }
@@ -197,7 +216,7 @@ final class Session
      */
     public function stoppedTime(float $maxGapSeconds = 30.0): ?float
     {
-        $elapsed = $this->totalElapsedTime() ?? $this->recordSpanSeconds();
+        $elapsed = $this->totalElapsedTime ?? $this->recordSpanSeconds();
         $moving  = $this->movingTime($maxGapSeconds);
         if ($elapsed === null || $moving === null) {
             return null;
@@ -211,7 +230,7 @@ final class Session
         $first = null;
         $last  = null;
         foreach ($this->records as $r) {
-            $t = $r->timestamp()?->getTimestamp();
+            $t = $r->timestamp?->getTimestamp();
             if ($t === null) {
                 continue;
             }
@@ -234,7 +253,7 @@ final class Session
      */
     public function recordsNormalized(): array
     {
-        return $this->normalizedCache ??= (new ContinuousTimelineNormalizer())->normalize($this->records);
+        return $this->normalizedCache ??= new ContinuousTimelineNormalizer()->normalize($this->records);
     }
 
     private function aggregateRaw(string $field, string $reducer, bool $zeroIsInvalid): ?int

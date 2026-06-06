@@ -24,7 +24,7 @@ final class TrackPoints
     {
         $points = [];
         foreach ($records as $record) {
-            $pos = $record->position();
+            $pos = $record->position;
             if ($pos !== null) {
                 $points[] = [$pos->lat, $pos->lng];
             }

@@ -15,7 +15,7 @@ final class KmlWriterTest extends TestCase
 {
     public function testTimedRecordsProduceGxTrackWithPairedWhenAndCoord(): void
     {
-        $xml   = (new KmlWriter())->toString(self::sampleActivity(withTimestamps: true));
+        $xml   = new KmlWriter()->toString(self::sampleActivity(withTimestamps: true));
         $xpath = self::xpath($xml);
 
         $whenCount  = (int) $xpath->evaluate('count(//gx:Track/k:when)');
@@ -34,7 +34,7 @@ final class KmlWriterTest extends TestCase
 
     public function testHeartRateAndCadenceRideAlongAsArrays(): void
     {
-        $xml   = (new KmlWriter())->toString(self::sampleActivity(withTimestamps: true));
+        $xml   = new KmlWriter()->toString(self::sampleActivity(withTimestamps: true));
         $xpath = self::xpath($xml);
 
         self::assertSame(1, (int) $xpath->evaluate('count(//gx:SimpleArrayData[@name="heartrate"])'));
@@ -44,7 +44,7 @@ final class KmlWriterTest extends TestCase
 
     public function testTimestamplessRecordsFallBackToLineString(): void
     {
-        $xml   = (new KmlWriter())->toString(self::sampleActivity(withTimestamps: false));
+        $xml   = new KmlWriter()->toString(self::sampleActivity(withTimestamps: false));
         $xpath = self::xpath($xml);
 
         self::assertSame(0, (int) $xpath->evaluate('count(//gx:Track)'));

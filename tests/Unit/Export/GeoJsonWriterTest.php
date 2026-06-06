@@ -15,7 +15,7 @@ final class GeoJsonWriterTest extends TestCase
 {
     public function testProducesAFeatureCollectionWithOneLineStringPerSession(): void
     {
-        $doc = self::decode((new GeoJsonWriter())->toString(self::sampleActivity()));
+        $doc = self::decode(new GeoJsonWriter()->toString(self::sampleActivity()));
 
         self::assertSame('FeatureCollection', $doc['type']);
         self::assertCount(1, $doc['features']);
@@ -26,7 +26,7 @@ final class GeoJsonWriterTest extends TestCase
 
     public function testCoordinatesAreInLngLatOrder(): void
     {
-        $doc    = self::decode((new GeoJsonWriter())->toString(self::sampleActivity()));
+        $doc    = self::decode(new GeoJsonWriter()->toString(self::sampleActivity()));
         $coords = $doc['features'][0]['geometry']['coordinates'];
 
         self::assertCount(3, $coords);
@@ -44,7 +44,7 @@ final class GeoJsonWriterTest extends TestCase
         ];
         $activity = self::wrap(new Session(['sport' => 'running'], [], $records));
 
-        $doc = self::decode((new GeoJsonWriter())->toString($activity));
+        $doc = self::decode(new GeoJsonWriter()->toString($activity));
 
         self::assertCount(2, $doc['features'][0]['geometry']['coordinates']);
     }
@@ -57,7 +57,7 @@ final class GeoJsonWriterTest extends TestCase
             [new Record(['position' => new GeoPoint(52.51, 13.35)])], // single fix
         ));
 
-        $doc = self::decode((new GeoJsonWriter())->toString($activity));
+        $doc = self::decode(new GeoJsonWriter()->toString($activity));
 
         self::assertSame([], $doc['features']);
     }
@@ -66,7 +66,7 @@ final class GeoJsonWriterTest extends TestCase
     {
         $activity = self::sampleActivity();
         // Resolver that returns no records ⇒ no drawable feature.
-        $doc = self::decode((new GeoJsonWriter())->toString($activity, static fn (Session $s): array => []));
+        $doc = self::decode(new GeoJsonWriter()->toString($activity, static fn (Session $s): array => []));
 
         self::assertSame([], $doc['features']);
     }

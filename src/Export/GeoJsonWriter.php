@@ -48,7 +48,7 @@ final class GeoJsonWriter
             }
 
             $properties = ['session' => $i + 1];
-            $sport = $session->sport();
+            $sport = $session->sport;
             if ($sport !== null) {
                 $properties['sport'] = $sport;
             }

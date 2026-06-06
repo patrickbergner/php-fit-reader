@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Emontis\FitReader\Tests\Support\SyntheticFit;
+namespace Emontis\FitReader\Util\SyntheticFit;
 
 use Emontis\FitReader\Protocol\BaseType;
 use Emontis\FitReader\Value\FitTimestamp;

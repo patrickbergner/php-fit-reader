@@ -32,7 +32,7 @@ foreach ($rows as $n => $r) {
     }
     printf(
         "%-10s %-7s %-7s %-9s %s\n",
-        $r->timestamp()?->format('H:i:s') ?? '—',
+        $r->timestamp?->format('H:i:s') ?? '—',
         number_format((float) ($r->field('kmh') ?? 0.0), 1),
         number_format((float) ($r->field('mph') ?? 0.0), 1),
         number_format((float) ($r->field('minkm') ?? 0.0), 2),

@@ -29,7 +29,7 @@ final class ContinuousTimelineNormalizerTest extends TestCase
     /** @return Record[] */
     private static function normalizeMiddlePower(float $middle): array
     {
-        return (new ContinuousTimelineNormalizer(zeroIsInvalid: ['power']))
+        return new ContinuousTimelineNormalizer(zeroIsInvalid: ['power'])
             ->normalize(self::recordsWithMiddlePower($middle));
     }
 
@@ -78,7 +78,7 @@ final class ContinuousTimelineNormalizerTest extends TestCase
     public function testNearZeroIsKeptForFieldsNotMarkedZeroInvalid(): void
     {
         // Default zeroIsInvalid is ['heart_rate'] — `power` is not covered here.
-        $out = (new ContinuousTimelineNormalizer())
+        $out = new ContinuousTimelineNormalizer()
             ->normalize(self::recordsWithMiddlePower(0.03));
 
         self::assertSame(0.03, $out[1]->field('power'));

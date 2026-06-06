@@ -22,8 +22,8 @@ $dist = [];
 $time = [];
 $t0   = null;
 foreach ($session->records as $r) {
-    $d = $r->distance();
-    $t = $r->timestamp();
+    $d = $r->distance;
+    $t = $r->timestamp;
     if ($d === null || $t === null) {
         continue;
     }

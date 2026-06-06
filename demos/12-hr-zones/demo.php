@@ -15,7 +15,7 @@ demo_title('12', 'Heart-rate zones — time in zone');
 // for exactly once — each record is one second, charged to the zone its heart
 // rate falls in. Zones here are the textbook %-of-max bands; swap in your own.
 
-$maxHr = $session->maxHeartRate() ?? 190;
+$maxHr = $session->maxHeartRate ?? 190;
 
 // Upper bound (% of max) and label for each zone, low → high.
 $bands = [
@@ -31,7 +31,7 @@ $timeInZone = array_fill(0, count($bands), 0.0);
 $belowZ1    = 0.0;
 
 foreach ($session->recordsNormalized() as $r) {
-    $hr = $r->heartRate();
+    $hr = $r->heartRate;
     if ($hr === null || $hr <= 0) {
         continue;
     }

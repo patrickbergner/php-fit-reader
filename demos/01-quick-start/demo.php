@@ -12,7 +12,7 @@ $session  = $activity->sessions[0];
 
 demo_title('01', 'Quick start');
 
-printf("Sport:    %s\n", $session->sport());
-printf("Distance: %.2f km\n", $session->totalDistance() / 1000.0);
-printf("Duration: %.0f min\n", $session->totalTimerTime() / 60.0);
-printf("Avg HR:   %s bpm\n", $session->avgHeartRate() ?? '—');
+printf("Sport:    %s\n", $session->sport);
+printf("Distance: %.2f km\n", $session->totalDistance / 1000.0);
+printf("Duration: %.0f min\n", $session->totalTimerTime / 60.0);
+printf("Avg HR:   %s bpm\n", $session->avgHeartRate ?? '—');

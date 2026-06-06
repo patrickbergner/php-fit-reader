@@ -6,7 +6,7 @@ namespace Emontis\FitReader\Activity;
 
 use Emontis\FitReader\Value\FitTimestamp;
 
-final readonly class Activity
+final class Activity
 {
     /**
      * @param array<string|int, mixed>      $fileId       raw file_id fields
@@ -17,38 +17,40 @@ final readonly class Activity
      * @param array<string|int, mixed>|null $summary      raw activity message fields
      */
     public function __construct(
-        public array $fileId,
-        public ?array $fileCreator,
-        public array $sessions,
-        public array $deviceInfos,
-        public array $events,
-        public ?array $summary,
+        public readonly array $fileId,
+        public readonly ?array $fileCreator,
+        public readonly array $sessions,
+        public readonly array $deviceInfos,
+        public readonly array $events,
+        public readonly ?array $summary,
     ) {
     }
 
-    public function manufacturer(): ?string
-    {
-        $v = $this->fileId['manufacturer'] ?? null;
-        return is_string($v) ? $v : (is_int($v) ? (string) $v : null);
+    public ?string $manufacturer {
+        get {
+            $v = $this->fileId['manufacturer'] ?? null;
+            return is_string($v) ? $v : (is_int($v) ? (string) $v : null);
+        }
     }
 
-    public function timeCreated(): ?\DateTimeImmutable
-    {
-        $v = $this->fileId['time_created'] ?? null;
-        return $v instanceof \DateTimeImmutable ? $v : null;
+    public ?\DateTimeImmutable $timeCreated {
+        get {
+            $v = $this->fileId['time_created'] ?? null;
+            return $v instanceof \DateTimeImmutable ? $v : null;
+        }
     }
 
-    public function numSessions(): int
-    {
-        return count($this->sessions);
+    public int $numSessions {
+        get => count($this->sessions);
     }
 
-    public function totalTimerTime(): ?float
-    {
-        $v = $this->summary['total_timer_time'] ?? null;
-        if (is_float($v)) return $v;
-        if (is_int($v))   return (float) $v;
-        return null;
+    public ?float $totalTimerTime {
+        get {
+            $v = $this->summary['total_timer_time'] ?? null;
+            if (is_float($v)) return $v;
+            if (is_int($v))   return (float) $v;
+            return null;
+        }
     }
 
     /**
@@ -57,24 +59,24 @@ final readonly class Activity
      * `timestamp` (the same instant in UTC). Null when the file doesn't carry
      * a local timestamp. FIT timestamps are UTC; this recovers the local zone.
      */
-    public function utcOffsetSeconds(): ?int
-    {
-        $summary = $this->summary;
-        if ($summary === null) {
+    public ?int $utcOffsetSeconds {
+        get {
+            $summary = $this->summary;
+            if ($summary === null) {
+                return null;
+            }
+            $ts    = $summary['timestamp'] ?? null;
+            $local = $summary['local_timestamp'] ?? null;
+            if ($ts instanceof \DateTimeInterface && is_int($local)) {
+                return $local - ($ts->getTimestamp() - FitTimestamp::FIT_EPOCH_OFFSET);
+            }
             return null;
         }
-        $ts    = $summary['timestamp'] ?? null;
-        $local = $summary['local_timestamp'] ?? null;
-        if ($ts instanceof \DateTimeInterface && is_int($local)) {
-            return $local - ($ts->getTimestamp() - FitTimestamp::FIT_EPOCH_OFFSET);
-        }
-        return null;
     }
 
-    /** `timeCreated()` expressed in the activity's local time zone. */
-    public function localTimeCreated(): ?\DateTimeImmutable
-    {
-        return $this->toLocalTime($this->timeCreated());
+    /** `timeCreated` expressed in the activity's local time zone. */
+    public ?\DateTimeImmutable $localTimeCreated {
+        get => $this->toLocalTime($this->timeCreated);
     }
 
     /**
@@ -88,7 +90,7 @@ final readonly class Activity
             return null;
         }
         $dt     = \DateTimeImmutable::createFromInterface($utc);
-        $offset = $this->utcOffsetSeconds();
+        $offset = $this->utcOffsetSeconds;
         return $offset === null ? $dt : $dt->setTimezone(self::offsetZone($offset));
     }
 

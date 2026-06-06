@@ -100,24 +100,26 @@ final class ValueDecoder
     private static function float32(string $b, bool $le): float
     {
         $arr = unpack($le ? 'g' : 'G', $b);
-        return $arr === false ? \NAN : (float) $arr[1];
+        $v   = $arr === false ? null : ($arr[1] ?? null);
+        return is_int($v) || is_float($v) ? (float) $v : \NAN;
     }
 
     private static function float64(string $b, bool $le): float
     {
         $arr = unpack($le ? 'e' : 'E', $b);
-        return $arr === false ? \NAN : (float) $arr[1];
+        $v   = $arr === false ? null : ($arr[1] ?? null);
+        return is_int($v) || is_float($v) ? (float) $v : \NAN;
     }
 
     private static function int64(string $b, bool $le): int
     {
         $arr = unpack($le ? 'P' : 'J', $b);
-        $v = $arr === false ? 0 : $arr[1];
+        $v   = $arr === false ? 0 : ($arr[1] ?? 0);
         // PHP int is always signed on 64-bit, so uint64 and sint64 decode
         // identically here. For unsigned semantics the caller would have to
         // inspect the sign bit; for FIT activity files 64-bit values are rare
         // and we accept the signed view.
-        return (int) $v;
+        return is_int($v) || is_float($v) ? (int) $v : 0;
     }
 
     private static function isInvalid(int|float|null $value, BaseType $type): bool

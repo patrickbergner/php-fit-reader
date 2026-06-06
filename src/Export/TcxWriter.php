@@ -100,10 +100,10 @@ final class TcxWriter
     private function writeActivity(\XMLWriter $xml, Session $session, callable $resolveRecords, ?array $device): void
     {
         $xml->startElement('Activity');
-        $xml->writeAttribute('Sport', self::mapSport($session->sport()));
+        $xml->writeAttribute('Sport', self::mapSport($session->sport));
 
         // Id (required xsd:dateTime) — session start, else first record, else epoch.
-        $xml->writeElement('Id', self::timeOrFallback($session->startTime(), $session->records));
+        $xml->writeElement('Id', self::timeOrFallback($session->startTime, $session->records));
 
         // One <Lap> per lap; synthesize a single lap from the session when none.
         $laps = $session->laps !== [] ? $session->laps : [new Lap($session->summary, $session->records)];
@@ -167,11 +167,11 @@ final class TcxWriter
     private function writeLap(\XMLWriter $xml, Lap $lap, callable $resolveRecords): void
     {
         $xml->startElement('Lap');
-        $xml->writeAttribute('StartTime', self::timeOrFallback($lap->startTime(), $lap->records));
+        $xml->writeAttribute('StartTime', self::timeOrFallback($lap->startTime, $lap->records));
 
         // Required elements (schema sequence + minOccurs=1), defaulted to 0 when absent.
-        $xml->writeElement('TotalTimeSeconds', self::fmtFloat($lap->totalTimerTime() ?? $lap->totalElapsedTime() ?? 0.0, 2));
-        $xml->writeElement('DistanceMeters', self::fmtFloat($lap->totalDistance() ?? 0.0, 2));
+        $xml->writeElement('TotalTimeSeconds', self::fmtFloat($lap->totalTimerTime ?? $lap->totalElapsedTime ?? 0.0, 2));
+        $xml->writeElement('DistanceMeters', self::fmtFloat($lap->totalDistance ?? 0.0, 2));
 
         $maxSpeed = self::asFloat($lap->field('enhanced_max_speed') ?? $lap->field('max_speed'));
         if ($maxSpeed !== null) {
@@ -205,7 +205,7 @@ final class TcxWriter
         // <Track> only when at least one trackpoint exists (minOccurs=1 inside).
         $trackOpen = false;
         foreach ($resolveRecords($lap) as $record) {
-            if ($record->timestamp() === null) {
+            if ($record->timestamp === null) {
                 continue; // Trackpoint/Time is required by the schema
             }
             if (!$trackOpen) {
@@ -225,7 +225,7 @@ final class TcxWriter
 
     private function writeTrackpoint(\XMLWriter $xml, Record $r): void
     {
-        $time = $r->timestamp();
+        $time = $r->timestamp;
         if ($time === null) {
             return; // caller already filters these out; the guard narrows the type
         }
@@ -233,7 +233,7 @@ final class TcxWriter
         $xml->startElement('Trackpoint');
         $xml->writeElement('Time', self::isoZ($time));
 
-        $pos = $r->position();
+        $pos = $r->position;
         if ($pos !== null) {
             $xml->startElement('Position');
             $xml->writeElement('LatitudeDegrees', self::fmtCoord($pos->lat));
@@ -241,28 +241,28 @@ final class TcxWriter
             $xml->endElement();
         }
 
-        $alt = $r->altitude();
+        $alt = $r->altitude;
         if ($alt !== null) {
             $xml->writeElement('AltitudeMeters', self::fmtFloat($alt, 2));
         }
-        $dist = $r->distance();
+        $dist = $r->distance;
         if ($dist !== null) {
             $xml->writeElement('DistanceMeters', self::fmtFloat($dist, 2));
         }
-        $hr = $r->heartRate();
+        $hr = $r->heartRate;
         if ($hr !== null) {
             $xml->startElement('HeartRateBpm');
             $xml->writeElement('Value', (string) $hr);
             $xml->endElement();
         }
-        $cad = $r->cadence();
+        $cad = $r->cadence;
         if ($cad !== null && $cad >= 0 && $cad <= 254) {
             $xml->writeElement('Cadence', (string) $cad);
         }
 
         // ax:TPX — Speed (m/s; native FIT speed, else derived speed_kmh→m/s) and Watts.
-        $speedMps = $r->speed() ?? self::derivedSpeedMps($r);
-        $watts    = $r->power();
+        $speedMps = $r->speed ?? self::derivedSpeedMps($r);
+        $watts    = $r->power;
         if ($speedMps !== null || $watts !== null) {
             $xml->startElement('Extensions');
             $xml->startElementNs('ax', 'TPX', null);
@@ -408,11 +408,11 @@ final class TcxWriter
     private static function sportNotes(Session $s): ?string
     {
         $parts = [];
-        if ($s->sport() !== null) {
-            $parts[] = 'sport=' . $s->sport();
+        if ($s->sport !== null) {
+            $parts[] = 'sport=' . $s->sport;
         }
-        if ($s->subSport() !== null) {
-            $parts[] = 'sub_sport=' . $s->subSport();
+        if ($s->subSport !== null) {
+            $parts[] = 'sub_sport=' . $s->subSport;
         }
         return $parts === [] ? null : 'FIT ' . implode(', ', $parts);
     }
@@ -435,7 +435,7 @@ final class TcxWriter
     private static function firstTimestamp(array $records): ?\DateTimeImmutable
     {
         foreach ($records as $r) {
-            $ts = $r->timestamp();
+            $ts = $r->timestamp;
             if ($ts !== null) {
                 return $ts;
             }

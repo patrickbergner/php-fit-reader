@@ -1,10 +1,4 @@
 parameters:
-    level: 8
+    level: 10
     paths:
         - src
-        - tests
-        - bin
-    ignoreErrors:
-        # The FIT field maps are intrinsically array<string|int, mixed>; requiring
-        # an iterable value type everywhere is noise, not a correctness signal.
-        - identifier: missingType.iterableValue

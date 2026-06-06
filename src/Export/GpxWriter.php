@@ -60,7 +60,7 @@ final class GpxWriter
 
         $xml->startElement('metadata');
         $xml->writeElement('name', $name);
-        $created = $activity->timeCreated();
+        $created = $activity->timeCreated;
         if ($created !== null) {
             $xml->writeElement('time', $created->format('Y-m-d\TH:i:s\Z'));
         }
@@ -70,15 +70,15 @@ final class GpxWriter
             $xml->startElement('trk');
             $xml->writeElement(
                 'name',
-                sprintf('%s — session %d (%s)', $name, $i + 1, $session->sport() ?? 'unknown'),
+                sprintf('%s — session %d (%s)', $name, $i + 1, $session->sport ?? 'unknown'),
             );
-            if ($session->sport() !== null) {
-                $xml->writeElement('type', $session->sport());
+            if ($session->sport !== null) {
+                $xml->writeElement('type', $session->sport);
             }
 
             $xml->startElement('trkseg');
             foreach ($resolveRecords($session) as $record) {
-                $pos = $record->position();
+                $pos = $record->position;
                 if ($pos === null) {
                     continue;
                 }
@@ -114,11 +114,11 @@ final class GpxWriter
         $xml->writeAttribute('lat', self::fmtCoord($lat));
         $xml->writeAttribute('lon', self::fmtCoord($lng));
 
-        $alt = $r->altitude();
+        $alt = $r->altitude;
         if ($alt !== null) {
             $xml->writeElement('ele', self::fmtFloat($alt, 2));
         }
-        $ts = $r->timestamp();
+        $ts = $r->timestamp;
         if ($ts !== null) {
             $xml->writeElement('time', $ts->format('Y-m-d\TH:i:s\Z'));
         }
@@ -127,11 +127,11 @@ final class GpxWriter
         // <power> and the derived <speed_kmh> / <pace_min_per_km> as separate
         // sibling extensions. wtemp isn't present in the FIT record message
         // so it's never emitted.
-        $atemp    = $r->temperature();
-        $depth    = $r->depth();
-        $hr       = $r->heartRate();
-        $cad      = $r->cadence();
-        $power    = $r->power();
+        $atemp    = $r->temperature;
+        $depth    = $r->depth;
+        $hr       = $r->heartRate;
+        $cad      = $r->cadence;
+        $power    = $r->power;
         $speedKmh = self::asFloat($r->field('speed_kmh'));
         $paceMpk  = self::asFloat($r->field('pace_min_per_km'));
 
@@ -174,8 +174,8 @@ final class GpxWriter
 
     private function defaultName(Activity $activity): string
     {
-        $sport = ($activity->sessions[0] ?? null)?->sport() ?? 'activity';
-        $when  = $activity->timeCreated()?->format('Y-m-d H:i') ?? '';
+        $sport = isset($activity->sessions[0]) ? ($activity->sessions[0]->sport ?? 'activity') : 'activity';
+        $when  = $activity->timeCreated?->format('Y-m-d H:i') ?? '';
         return trim(sprintf('%s %s', ucfirst($sport), $when));
     }
 

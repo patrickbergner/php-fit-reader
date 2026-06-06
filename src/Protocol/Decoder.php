@@ -19,7 +19,7 @@ use Emontis\FitReader\Value\ValueDecoder;
 /**
  * Streaming FIT decoder. Public API:
  *
- *     foreach ((new Decoder($stream))->messages() as $message) { … }
+ *     foreach (new Decoder($stream)->messages() as $message) { … }
  *
  * Yields profile-resolved Message objects. Verifies header and file CRC.
  */
@@ -301,7 +301,7 @@ final class Decoder
 
         // FIT date_time → DateTimeImmutable (UTC).
         if ($f->typeName === 'date_time' && is_int($value)) {
-            return (new FitTimestamp($value))->toDateTimeImmutable();
+            return new FitTimestamp($value)->toDateTimeImmutable();
         }
 
         // Semicircles → degrees.

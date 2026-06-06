@@ -210,15 +210,15 @@ final class ContinuousTimelineNormalizer
         $lastGps = null;
         $history = [];
         return function (?Record $_prev, Record $curr) use (&$lastGps, &$history, $convert, $smoothingSeconds): ?float {
-            $p2 = $curr->position();
-            $t2 = $curr->timestamp();
+            $p2 = $curr->position;
+            $t2 = $curr->timestamp;
 
             $inst = null;
             if ($p2 !== null && $t2 !== null) {
                 if ($lastGps !== null) {
                     /** @var Record $lastGps */
-                    $p1 = $lastGps->position();
-                    $t1 = $lastGps->timestamp();
+                    $p1 = $lastGps->position;
+                    $t1 = $lastGps->timestamp;
                     if ($p1 !== null && $t1 !== null) {
                         $dt = $t2->getTimestamp() - $t1->getTimestamp();
                         if ($dt > 0) {
@@ -268,13 +268,13 @@ final class ContinuousTimelineNormalizer
 
     /**
      * @param Record[] $raw
-     * @return Record[]
+     * @return list<Record>
      */
     public function normalize(array $raw): array
     {
         $buckets = [];
         foreach ($raw as $r) {
-            $ts = $r->timestamp();
+            $ts = $r->timestamp;
             if ($ts === null) {
                 continue;
             }

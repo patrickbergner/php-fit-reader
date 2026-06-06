@@ -26,10 +26,10 @@ final class ActivityLocalTimeTest extends TestCase
             summary:     ['timestamp' => $utc, 'local_timestamp' => $localFit],
         );
 
-        self::assertSame(self::OFFSET, $activity->utcOffsetSeconds());
+        self::assertSame(self::OFFSET, $activity->utcOffsetSeconds);
 
         // Same instant, expressed in +02:00.
-        self::assertSame('2026-06-01T12:00:00+02:00', $activity->localTimeCreated()?->format('c'));
+        self::assertSame('2026-06-01T12:00:00+02:00', $activity->localTimeCreated?->format('c'));
         self::assertSame('2026-06-01T12:00:00+02:00', $activity->toLocalTime($utc)?->format('c'));
         self::assertNull($activity->toLocalTime(null));
     }
@@ -46,8 +46,8 @@ final class ActivityLocalTimeTest extends TestCase
             summary:     null,
         );
 
-        self::assertNull($activity->utcOffsetSeconds());
+        self::assertNull($activity->utcOffsetSeconds);
         // Falls back to the UTC instant unchanged.
-        self::assertSame('2026-06-01T10:00:00+00:00', $activity->localTimeCreated()?->format('c'));
+        self::assertSame('2026-06-01T10:00:00+00:00', $activity->localTimeCreated?->format('c'));
     }
 }

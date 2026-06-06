@@ -4,13 +4,12 @@
 declare(strict_types=1);
 
 /**
- * Reads Garmin's Profile.xlsx and emits the generated profile data the
- * library reads at runtime.
+ * Reads Garmin's Profile.xlsx and emits the generated profile data the library reads at runtime.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Emontis\FitReader\Codegen\ProfileGenerator;
+use Emontis\FitReader\Util\Codegen\ProfileGenerator;
 
 $root = dirname(__DIR__);
 $xlsx = $argv[1] ?? ($root . '/resources/Profile.xlsx');

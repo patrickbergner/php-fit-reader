@@ -1,0 +1,12 @@
+# Dev-only trees (build/codegen utilities, tests, bin scripts) analyzed at a pragmatic level 8.
+# Production `src` is held to level 10.
+parameters:
+    level: 8
+    paths:
+        - util
+        - tests
+        - bin
+    ignoreErrors:
+        # The FIT field maps are intrinsically array<string|int, mixed>; requiring
+        # an iterable value type everywhere is noise, not a correctness signal.
+        - identifier: missingType.iterableValue

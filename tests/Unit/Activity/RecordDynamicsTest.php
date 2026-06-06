@@ -25,22 +25,22 @@ final class RecordDynamicsTest extends TestCase
             'fractional_cadence'   => 0.5,
         ]);
 
-        self::assertSame(85.9, $r->verticalOscillation());
-        self::assertSame(234.0, $r->stanceTime());
-        self::assertSame(33.0, $r->stanceTimePercent());
-        self::assertSame(49.8, $r->stanceTimeBalance());
-        self::assertSame(8.69, $r->verticalRatio());
-        self::assertSame(988.0, $r->stepLength());
-        self::assertSame(0.5, $r->fractionalCadence());
+        self::assertSame(85.9, $r->verticalOscillation);
+        self::assertSame(234.0, $r->stanceTime);
+        self::assertSame(33.0, $r->stanceTimePercent);
+        self::assertSame(49.8, $r->stanceTimeBalance);
+        self::assertSame(8.69, $r->verticalRatio);
+        self::assertSame(988.0, $r->stepLength);
+        self::assertSame(0.5, $r->fractionalCadence);
     }
 
     public function testRespirationPrefersEnhancedField(): void
     {
         $both = new Record(['enhanced_respiration_rate' => 24.2, 'respiration_rate' => 20.0]);
-        self::assertSame(24.2, $both->respirationRate());
+        self::assertSame(24.2, $both->respirationRate);
 
         $legacy = new Record(['respiration_rate' => 20.0]);
-        self::assertSame(20.0, $legacy->respirationRate());
+        self::assertSame(20.0, $legacy->respirationRate);
     }
 
     public function testCyclingDynamicsAccessors(): void
@@ -54,21 +54,21 @@ final class RecordDynamicsTest extends TestCase
             'combined_pedal_smoothness'  => 21.5,
         ]);
 
-        self::assertSame(178, $r->leftRightBalance());
-        self::assertSame(75.0, $r->leftTorqueEffectiveness());
-        self::assertSame(73.5, $r->rightTorqueEffectiveness());
-        self::assertSame(22.0, $r->leftPedalSmoothness());
-        self::assertSame(21.0, $r->rightPedalSmoothness());
-        self::assertSame(21.5, $r->combinedPedalSmoothness());
+        self::assertSame(178, $r->leftRightBalance);
+        self::assertSame(75.0, $r->leftTorqueEffectiveness);
+        self::assertSame(73.5, $r->rightTorqueEffectiveness);
+        self::assertSame(22.0, $r->leftPedalSmoothness);
+        self::assertSame(21.0, $r->rightPedalSmoothness);
+        self::assertSame(21.5, $r->combinedPedalSmoothness);
     }
 
     public function testMissingFieldsReturnNull(): void
     {
         $r = new Record([]);
-        self::assertNull($r->verticalOscillation());
-        self::assertNull($r->stanceTime());
-        self::assertNull($r->respirationRate());
-        self::assertNull($r->leftRightBalance());
-        self::assertNull($r->combinedPedalSmoothness());
+        self::assertNull($r->verticalOscillation);
+        self::assertNull($r->stanceTime);
+        self::assertNull($r->respirationRate);
+        self::assertNull($r->leftRightBalance);
+        self::assertNull($r->combinedPedalSmoothness);
     }
 }

@@ -11,7 +11,7 @@ final class CsvWriterTest extends TestCase
 {
     public function testDefaultDialectIsCommaSeparatedWithLfEndings(): void
     {
-        $csv = (new CsvWriter())->toString([
+        $csv = new CsvWriter()->toString([
             ['name' => 'a', 'value' => 1],
             ['name' => 'b', 'value' => 2],
         ]);
@@ -21,7 +21,7 @@ final class CsvWriterTest extends TestCase
 
     public function testSeparatorAndEolAreOverridable(): void
     {
-        $csv = (new CsvWriter(separator: ';', eol: "\r\n"))->toString([
+        $csv = new CsvWriter(separator: ';', eol: "\r\n")->toString([
             ['name' => 'a', 'value' => 1],
         ]);
 
@@ -32,7 +32,7 @@ final class CsvWriterTest extends TestCase
     {
         // The value contains the separator, so it must be quoted — with the
         // caller's enclosure character, not the default double quote.
-        $csv = (new CsvWriter(enclosure: "'"))->toString([
+        $csv = new CsvWriter(enclosure: "'")->toString([
             ['col' => 'x,y'],
         ]);
 
@@ -41,7 +41,7 @@ final class CsvWriterTest extends TestCase
 
     public function testDefaultEscapeDoublesEmbeddedEnclosurePerRfc4180(): void
     {
-        $csv = (new CsvWriter())->toString([
+        $csv = new CsvWriter()->toString([
             ['col' => 'p"q'],
         ]);
 
@@ -56,8 +56,8 @@ final class CsvWriterTest extends TestCase
         $rows = [['col' => 'a\\b']];
 
         self::assertNotSame(
-            (new CsvWriter())->toString($rows),
-            (new CsvWriter(escape: '\\'))->toString($rows),
+            new CsvWriter()->toString($rows),
+            new CsvWriter(escape: '\\')->toString($rows),
         );
     }
 
@@ -65,7 +65,7 @@ final class CsvWriterTest extends TestCase
     {
         $path = sys_get_temp_dir() . '/fit-reader-csvwriter-' . uniqid() . '.csv';
         try {
-            (new CsvWriter(separator: "\t", eol: "\r\n"))->writeRows($path, [
+            new CsvWriter(separator: "\t", eol: "\r\n")->writeRows($path, [
                 ['name' => 'a', 'value' => 1],
             ]);
             self::assertSame("name\tvalue\r\na\t1\r\n", file_get_contents($path));

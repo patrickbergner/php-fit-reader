@@ -23,13 +23,13 @@ final class SessionTimeTest extends TestCase
             [],
         );
 
-        self::assertSame(86.0, $s->avgVerticalOscillation());
-        self::assertSame(240.0, $s->avgStanceTime());
-        self::assertSame(34.0, $s->avgStanceTimePercent());
-        self::assertSame(990.0, $s->avgStepLength());
+        self::assertSame(86.0, $s->avgVerticalOscillation);
+        self::assertSame(240.0, $s->avgStanceTime);
+        self::assertSame(34.0, $s->avgStanceTimePercent);
+        self::assertSame(990.0, $s->avgStepLength);
 
         $empty = new Session([], [], []);
-        self::assertNull($empty->avgVerticalOscillation());
+        self::assertNull($empty->avgVerticalOscillation);
     }
 
     public function testMovingAndStoppedTimeFromSummary(): void

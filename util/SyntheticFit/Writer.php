@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Emontis\FitReader\Tests\Support\SyntheticFit;
+namespace Emontis\FitReader\Util\SyntheticFit;
 
 use Emontis\FitReader\Io\Crc16;
 use Emontis\FitReader\Profile\FieldDef;
@@ -23,7 +23,7 @@ use Emontis\FitReader\Value\FitTimestamp;
  *
  * Usage:
  *
- *     (new Writer())
+ *     new Writer()
  *         ->add('file_id', ['type' => 'activity', 'manufacturer' => 'garmin',
  *                           'product' => 1234, 'serial_number' => 99,
  *                           'time_created' => new DateTimeImmutable('...')])

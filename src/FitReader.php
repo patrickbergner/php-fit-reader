@@ -9,6 +9,7 @@ use Emontis\FitReader\Activity\ActivityReader;
 use Emontis\FitReader\Activity\ContinuousTimelineNormalizer;
 use Emontis\FitReader\Activity\DeriverFactory;
 use Emontis\FitReader\Activity\Lap;
+use Emontis\FitReader\Activity\Record;
 use Emontis\FitReader\Activity\Session;
 use Emontis\FitReader\Export\CsvWriter;
 use Emontis\FitReader\Export\GeoJsonWriter;
@@ -107,6 +108,8 @@ use Emontis\FitReader\Protocol\Decoder;
  *   - FitReader::milesPerHourFromGps($smoothingSeconds)
  *   - FitReader::minutesPerKilometerFromGps($smoothingSeconds)
  *   - FitReader::minutesPerMileFromGps($smoothingSeconds)
+ *
+ * @phpstan-type NormalizeOptions array{stepSeconds?: int, zeroIsInvalid?: list<string>, include?: list<string>|null, exclude?: list<string>, noFill?: list<string>, derive?: array<string, (callable(?Record, Record): mixed)|DeriverFactory>}
  */
 final class FitReader
 {
@@ -137,6 +140,7 @@ final class FitReader
     /**
      * Decode a FIT activity file and write the GPS track as a GPX 1.1 file.
      * Returns the decoded Activity so callers can inspect the data too.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToGpx(
         string $fitPath,
@@ -146,12 +150,13 @@ final class FitReader
         bool|array $normalize = false,
     ): Activity {
         $activity = self::activity($fitPath, verifyCrc: $verifyCrc);
-        (new GpxWriter())->writeFile($activity, $gpxPath, $name, self::recordResolver($normalize));
+        new GpxWriter()->writeFile($activity, $gpxPath, $name, self::recordResolver($normalize));
         return $activity;
     }
 
     /**
      * Decode a FIT activity file and return the GPX 1.1 document as a string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToGpxString(
         string $fitPath,
@@ -159,7 +164,7 @@ final class FitReader
         bool $verifyCrc = true,
         bool|array $normalize = false,
     ): string {
-        return (new GpxWriter())->toString(
+        return new GpxWriter()->toString(
             self::activity($fitPath, verifyCrc: $verifyCrc),
             $name,
             self::recordResolver($normalize),
@@ -168,6 +173,7 @@ final class FitReader
 
     /**
      * Write the GPS track of an already-decoded Activity as a GPX 1.1 file.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToGpx(
         Activity $activity,
@@ -175,18 +181,19 @@ final class FitReader
         ?string $name = null,
         bool|array $normalize = false,
     ): void {
-        (new GpxWriter())->writeFile($activity, $gpxPath, $name, self::recordResolver($normalize));
+        new GpxWriter()->writeFile($activity, $gpxPath, $name, self::recordResolver($normalize));
     }
 
     /**
      * Render the GPS track of an already-decoded Activity as a GPX 1.1 string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToGpxString(
         Activity $activity,
         ?string $name = null,
         bool|array $normalize = false,
     ): string {
-        return (new GpxWriter())->toString($activity, $name, self::recordResolver($normalize));
+        return new GpxWriter()->toString($activity, $name, self::recordResolver($normalize));
     }
 
     /**
@@ -194,6 +201,7 @@ final class FitReader
      * <Activity> per session, one <Lap> per lap, with native HR/cadence/
      * distance/altitude and Speed/Watts in the ActivityExtension namespace.
      * Returns the decoded Activity so callers can inspect the data too.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToTcx(
         string $fitPath,
@@ -202,19 +210,20 @@ final class FitReader
         bool|array $normalize = false,
     ): Activity {
         $activity = self::activity($fitPath, verifyCrc: $verifyCrc);
-        (new TcxWriter())->writeFile($activity, $tcxPath, self::lapRecordResolver($normalize));
+        new TcxWriter()->writeFile($activity, $tcxPath, self::lapRecordResolver($normalize));
         return $activity;
     }
 
     /**
      * Decode a FIT activity file and return the TCX v2 document as a string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToTcxString(
         string $fitPath,
         bool $verifyCrc = true,
         bool|array $normalize = false,
     ): string {
-        return (new TcxWriter())->toString(
+        return new TcxWriter()->toString(
             self::activity($fitPath, verifyCrc: $verifyCrc),
             self::lapRecordResolver($normalize),
         );
@@ -222,23 +231,25 @@ final class FitReader
 
     /**
      * Write an already-decoded Activity as a Garmin TCX v2 file.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToTcx(
         Activity $activity,
         string $tcxPath,
         bool|array $normalize = false,
     ): void {
-        (new TcxWriter())->writeFile($activity, $tcxPath, self::lapRecordResolver($normalize));
+        new TcxWriter()->writeFile($activity, $tcxPath, self::lapRecordResolver($normalize));
     }
 
     /**
      * Render an already-decoded Activity as a TCX v2 string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToTcxString(
         Activity $activity,
         bool|array $normalize = false,
     ): string {
-        return (new TcxWriter())->toString($activity, self::lapRecordResolver($normalize));
+        return new TcxWriter()->toString($activity, self::lapRecordResolver($normalize));
     }
 
     /**
@@ -246,6 +257,7 @@ final class FitReader
      * 2.2 file — a time-animatable <gx:Track> per session (or a plain
      * <LineString> when records lack timestamps), styled for Google Earth.
      * Returns the decoded Activity so callers can inspect the data too.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToKml(
         string $fitPath,
@@ -255,12 +267,13 @@ final class FitReader
         bool|array $normalize = false,
     ): Activity {
         $activity = self::activity($fitPath, verifyCrc: $verifyCrc);
-        (new KmlWriter())->writeFile($activity, $kmlPath, $name, self::recordResolver($normalize));
+        new KmlWriter()->writeFile($activity, $kmlPath, $name, self::recordResolver($normalize));
         return $activity;
     }
 
     /**
      * Decode a FIT activity file and return the KML 2.2 document as a string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToKmlString(
         string $fitPath,
@@ -268,7 +281,7 @@ final class FitReader
         bool $verifyCrc = true,
         bool|array $normalize = false,
     ): string {
-        return (new KmlWriter())->toString(
+        return new KmlWriter()->toString(
             self::activity($fitPath, verifyCrc: $verifyCrc),
             $name,
             self::recordResolver($normalize),
@@ -277,6 +290,7 @@ final class FitReader
 
     /**
      * Write the GPS track(s) of an already-decoded Activity as a KML 2.2 file.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToKml(
         Activity $activity,
@@ -284,18 +298,19 @@ final class FitReader
         ?string $name = null,
         bool|array $normalize = false,
     ): void {
-        (new KmlWriter())->writeFile($activity, $kmlPath, $name, self::recordResolver($normalize));
+        new KmlWriter()->writeFile($activity, $kmlPath, $name, self::recordResolver($normalize));
     }
 
     /**
      * Render the GPS track(s) of an already-decoded Activity as a KML 2.2 string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToKmlString(
         Activity $activity,
         ?string $name = null,
         bool|array $normalize = false,
     ): string {
-        return (new KmlWriter())->toString($activity, $name, self::recordResolver($normalize));
+        return new KmlWriter()->toString($activity, $name, self::recordResolver($normalize));
     }
 
     /**
@@ -303,6 +318,7 @@ final class FitReader
      * (RFC 7946) FeatureCollection — one <LineString> per session, ready for
      * web maps (Leaflet/MapLibre/OpenLayers). Returns the decoded Activity so
      * callers can inspect the data too.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToGeoJson(
         string $fitPath,
@@ -311,19 +327,20 @@ final class FitReader
         bool|array $normalize = false,
     ): Activity {
         $activity = self::activity($fitPath, verifyCrc: $verifyCrc);
-        (new GeoJsonWriter())->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
+        new GeoJsonWriter()->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
         return $activity;
     }
 
     /**
      * Decode a FIT activity file and return the GeoJSON document as a string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function fitToGeoJsonString(
         string $fitPath,
         bool $verifyCrc = true,
         bool|array $normalize = false,
     ): string {
-        return (new GeoJsonWriter())->toString(
+        return new GeoJsonWriter()->toString(
             self::activity($fitPath, verifyCrc: $verifyCrc),
             self::recordResolver($normalize),
         );
@@ -331,23 +348,25 @@ final class FitReader
 
     /**
      * Write the GPS track(s) of an already-decoded Activity as a GeoJSON file.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToGeoJson(
         Activity $activity,
         string $geoJsonPath,
         bool|array $normalize = false,
     ): void {
-        (new GeoJsonWriter())->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
+        new GeoJsonWriter()->writeFile($activity, $geoJsonPath, self::recordResolver($normalize));
     }
 
     /**
      * Render the GPS track(s) of an already-decoded Activity as a GeoJSON string.
+     * @param bool|NormalizeOptions $normalize
      */
     public static function activityToGeoJsonString(
         Activity $activity,
         bool|array $normalize = false,
     ): string {
-        return (new GeoJsonWriter())->toString($activity, self::recordResolver($normalize));
+        return new GeoJsonWriter()->toString($activity, self::recordResolver($normalize));
     }
 
     /**
@@ -361,8 +380,8 @@ final class FitReader
      * with {@see ContinuousTimelineNormalizer::perRun()} stay isolated per
      * session.
      *
-     * @param bool|array<string, mixed> $normalize
-     * @return callable(Session): array<int, \Emontis\FitReader\Activity\Record>
+     * @param bool|NormalizeOptions $normalize
+     * @return callable(Session): list<\Emontis\FitReader\Activity\Record>
      */
     private static function recordResolver(bool|array $normalize): callable
     {
@@ -370,7 +389,7 @@ final class FitReader
             return static fn (Session $s): array => $s->records;
         }
         $config = $normalize === true ? [] : $normalize;
-        return static fn (Session $s): array => (new ContinuousTimelineNormalizer(...$config))->normalize($s->records);
+        return static fn (Session $s): array => new ContinuousTimelineNormalizer(...$config)->normalize($s->records);
     }
 
     /**
@@ -378,8 +397,8 @@ final class FitReader
      * which groups trackpoints under their lap. A fresh normalizer is built
      * per lap, so stateful {@see perRun()} derivers stay isolated per lap.
      *
-     * @param bool|array<string, mixed> $normalize
-     * @return callable(Lap): array<int, \Emontis\FitReader\Activity\Record>
+     * @param bool|NormalizeOptions $normalize
+     * @return callable(Lap): list<\Emontis\FitReader\Activity\Record>
      */
     private static function lapRecordResolver(bool|array $normalize): callable
     {
@@ -387,7 +406,7 @@ final class FitReader
             return static fn (Lap $l): array => $l->records;
         }
         $config = $normalize === true ? [] : $normalize;
-        return static fn (Lap $l): array => (new ContinuousTimelineNormalizer(...$config))->normalize($l->records);
+        return static fn (Lap $l): array => new ContinuousTimelineNormalizer(...$config)->normalize($l->records);
     }
 
     /**
@@ -397,7 +416,7 @@ final class FitReader
      * write a normalized continuous timeline instead. Returns the decoded
      * Activity so callers can inspect the data too.
      *
-     * @param bool|array<string, mixed> $normalize
+     * @param bool|NormalizeOptions $normalize
      * @param array<string, string>     $csv CSV dialect overrides (separator/enclosure/escape/eol), spread into {@see CsvWriter}
      */
     public static function fitToCsv(
@@ -417,7 +436,7 @@ final class FitReader
      * of writing a file — the string counterpart of {@see fitToCsv()}, same
      * rows/columns as {@see activityToCsvString()}.
      *
-     * @param bool|array<string, mixed> $normalize
+     * @param bool|NormalizeOptions $normalize
      * @param array<string, string>     $csv CSV dialect overrides (separator/enclosure/escape/eol), spread into {@see CsvWriter}
      */
     public static function fitToCsvString(
@@ -436,7 +455,7 @@ final class FitReader
      * default; pass $normalize (`true`, or an options array) for a normalized
      * continuous timeline.
      *
-     * @param bool|array<string, mixed> $normalize
+     * @param bool|NormalizeOptions $normalize
      * @param array<string, string>     $csv CSV dialect overrides (separator/enclosure/escape/eol), spread into {@see CsvWriter}
      */
     public static function activityToCsv(
@@ -445,14 +464,14 @@ final class FitReader
         bool|array $normalize = false,
         array $csv = [],
     ): void {
-        (new CsvWriter(...$csv))->writeRows($path, self::csvRows($activity, $normalize));
+        new CsvWriter(...$csv)->writeRows($path, self::csvRows($activity, $normalize));
     }
 
     /**
      * Render the records of an already-decoded Activity as a CSV string instead
      * of writing a file. Same rows/columns as {@see activityToCsv()}.
      *
-     * @param bool|array<string, mixed> $normalize
+     * @param bool|NormalizeOptions $normalize
      * @param array<string, string>     $csv CSV dialect overrides (separator/enclosure/escape/eol), spread into {@see CsvWriter}
      */
     public static function activityToCsvString(
@@ -460,7 +479,7 @@ final class FitReader
         bool|array $normalize = false,
         array $csv = [],
     ): string {
-        return (new CsvWriter(...$csv))->toString(self::csvRows($activity, $normalize));
+        return new CsvWriter(...$csv)->toString(self::csvRows($activity, $normalize));
     }
 
     /**
@@ -468,7 +487,7 @@ final class FitReader
      * field dict, with a leading `session_index` column so multi-session
      * activities stay distinguishable.
      *
-     * @param bool|array<string, mixed> $normalize
+     * @param bool|NormalizeOptions $normalize
      * @return list<array<string|int, mixed>>
      */
     private static function csvRows(Activity $activity, bool|array $normalize): array
@@ -502,7 +521,7 @@ final class FitReader
         string $accessToken,
         string $styleId = 'mapbox/outdoors-v12',
     ): bool {
-        return (new MapboxRenderer($accessToken, $styleId))->writeFile(
+        return new MapboxRenderer($accessToken, $styleId)->writeFile(
             $activity,
             $path,
             static fn (Session $s): array => $s->records,

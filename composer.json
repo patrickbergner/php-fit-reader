@@ -41,15 +41,15 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Emontis\\FitReader\\Tests\\": "tests/"
+            "Emontis\\FitReader\\Tests\\": "tests/",
+            "Emontis\\FitReader\\Util\\": "util/"
         }
     },
-    "bin": [
-        "bin/generate-default-samples",
-        "bin/generate-profile"
-    ],
     "scripts": {
-        "analyze": "phpstan analyse",
+        "analyze": [
+            "phpstan analyse -c phpstan.neon",
+            "phpstan analyse -c phpstan-util.neon"
+        ],
         "test": "phpunit --testsuite unit"
     },
     "minimum-stability": "stable"

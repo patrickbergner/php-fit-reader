@@ -216,7 +216,7 @@ final class SampleFilesTest extends TestCase
             $thin = FitReader::encodedPolyline($session, 5, 1e-4);
             $points = 0;
             foreach ($session->records as $r) {
-                if ($r->position() !== null) {
+                if ($r->position !== null) {
                     $points++;
                 }
             }
@@ -244,13 +244,13 @@ final class SampleFilesTest extends TestCase
         $md[] = '';
         $md[] = sprintf('- **Path:** `%s`', $sourcePath);
         $md[] = sprintf('- **Size:** %d bytes', filesize($sourcePath));
-        $md[] = sprintf('- **Manufacturer:** %s', $activity->manufacturer() ?? '_unknown_');
-        $md[] = sprintf('- **Time created:** %s', $activity->timeCreated()?->format('c') ?? '_unknown_');
-        $md[] = sprintf('- **Sessions:** %d', $activity->numSessions());
+        $md[] = sprintf('- **Manufacturer:** %s', $activity->manufacturer ?? '_unknown_');
+        $md[] = sprintf('- **Time created:** %s', $activity->timeCreated?->format('c') ?? '_unknown_');
+        $md[] = sprintf('- **Sessions:** %d', $activity->numSessions);
         $md[] = sprintf('- **Device-info messages:** %d', count($activity->deviceInfos));
         $md[] = sprintf('- **Event messages:** %d', count($activity->events));
-        if ($activity->totalTimerTime() !== null) {
-            $md[] = sprintf('- **Activity total timer time:** %.0f s', $activity->totalTimerTime());
+        if ($activity->totalTimerTime !== null) {
+            $md[] = sprintf('- **Activity total timer time:** %.0f s', $activity->totalTimerTime);
         }
         $md[] = '';
 
@@ -354,21 +354,21 @@ final class SampleFilesTest extends TestCase
     private function sessionTable(Session $s): array
     {
         $rows = [
-            ['Sport',                  $s->sport() ?? '—'],
-            ['Sub-sport',              $s->subSport() ?? '—'],
-            ['Start time',             $s->startTime()?->format('c') ?? '—'],
-            ['Total distance (m)',     self::fmt($s->totalDistance())],
-            ['Total timer (s)',        self::fmt($s->totalTimerTime())],
-            ['Total elapsed (s)',      self::fmt($s->totalElapsedTime())],
-            ['Avg heart rate (bpm)',   self::fmt($s->avgHeartRate())],
-            ['Max heart rate (bpm)',   self::fmt($s->maxHeartRate())],
-            ['Avg cadence (rpm)',      self::fmt($s->avgCadence())],
-            ['Max cadence (rpm)',      self::fmt($s->maxCadence())],
-            ['Avg power (W)',          self::fmt($s->avgPower())],
-            ['Max power (W)',          self::fmt($s->maxPower())],
-            ['Total calories',         self::fmt($s->totalCalories())],
-            ['Total ascent (m)',       self::fmt($s->totalAscent())],
-            ['Total descent (m)',      self::fmt($s->totalDescent())],
+            ['Sport',                  $s->sport ?? '—'],
+            ['Sub-sport',              $s->subSport ?? '—'],
+            ['Start time',             $s->startTime?->format('c') ?? '—'],
+            ['Total distance (m)',     self::fmt($s->totalDistance)],
+            ['Total timer (s)',        self::fmt($s->totalTimerTime)],
+            ['Total elapsed (s)',      self::fmt($s->totalElapsedTime)],
+            ['Avg heart rate (bpm)',   self::fmt($s->avgHeartRate)],
+            ['Max heart rate (bpm)',   self::fmt($s->maxHeartRate)],
+            ['Avg cadence (rpm)',      self::fmt($s->avgCadence)],
+            ['Max cadence (rpm)',      self::fmt($s->maxCadence)],
+            ['Avg power (W)',          self::fmt($s->avgPower)],
+            ['Max power (W)',          self::fmt($s->maxPower)],
+            ['Total calories',         self::fmt($s->totalCalories)],
+            ['Total ascent (m)',       self::fmt($s->totalAscent)],
+            ['Total descent (m)',      self::fmt($s->totalDescent)],
             ['Laps',                   (string) count($s->laps)],
             ['Records (raw)',          (string) count($s->records)],
             ['Records (normalized)',   (string) count($s->recordsNormalized())],
@@ -393,15 +393,15 @@ final class SampleFilesTest extends TestCase
         $normCounts = self::countPopulated($normalized);
         $firstPos = null;
         foreach ($s->records as $r) {
-            $p = $r->position();
+            $p = $r->position;
             if ($p !== null) {
                 $firstPos = $p;
                 break;
             }
         }
         $out = ['### Records', ''];
-        $out[] = sprintf('- **First record:** %s', $first->timestamp()?->format('c') ?? '—');
-        $out[] = sprintf('- **Last record:**  %s', $last->timestamp()?->format('c') ?? '—');
+        $out[] = sprintf('- **First record:** %s', $first->timestamp?->format('c') ?? '—');
+        $out[] = sprintf('- **Last record:**  %s', $last->timestamp?->format('c') ?? '—');
         $out[] = sprintf('- **Raw records:** %d', count($s->records));
         $out[] = sprintf('- **With GPS:** %d', $rawCounts['gps']);
         $out[] = sprintf('- **With heart rate:** %d', $rawCounts['hr']);
@@ -428,10 +428,10 @@ final class SampleFilesTest extends TestCase
     {
         $gps = $hr = $cad = $power = 0;
         foreach ($records as $r) {
-            if ($r->position() !== null)  $gps++;
-            if ($r->heartRate() !== null) $hr++;
-            if ($r->cadence() !== null)   $cad++;
-            if ($r->power() !== null)     $power++;
+            if ($r->position !== null)  $gps++;
+            if ($r->heartRate !== null) $hr++;
+            if ($r->cadence !== null)   $cad++;
+            if ($r->power !== null)     $power++;
         }
         return ['gps' => $gps, 'hr' => $hr, 'cad' => $cad, 'power' => $power];
     }

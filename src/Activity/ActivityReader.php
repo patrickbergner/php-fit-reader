@@ -115,7 +115,7 @@ final class ActivityReader
         $cmpStart = static fn (Message $a, Message $b) => self::ts($a->fields['start_time'] ?? null) <=> self::ts($b->fields['start_time'] ?? null);
         usort($sessionMsgs, $cmpStart);
         usort($lapMsgs, $cmpStart);
-        usort($records, static fn (Record $a, Record $b) => ($a->timestamp()?->getTimestamp() ?? PHP_INT_MAX) <=> ($b->timestamp()?->getTimestamp() ?? PHP_INT_MAX));
+        usort($records, static fn (Record $a, Record $b) => ($a->timestamp?->getTimestamp() ?? PHP_INT_MAX) <=> ($b->timestamp?->getTimestamp() ?? PHP_INT_MAX));
 
         // Fast path: single session — everything goes to it.
         if (count($sessionMsgs) === 1) {
@@ -135,7 +135,7 @@ final class ActivityReader
             $myRecords = array_values(array_filter(
                 $records,
                 static function (Record $r) use ($start, $end): bool {
-                    $ts = $r->timestamp()?->getTimestamp();
+                    $ts = $r->timestamp?->getTimestamp();
                     return $ts !== null && $ts >= $start && $ts <= $end;
                 },
             ));
@@ -158,7 +158,7 @@ final class ActivityReader
     /**
      * @param Record[]                $records
      * @param array<string|int,mixed> $lapFields
-     * @return Record[]
+     * @return list<Record>
      */
     private static function recordsInRange(array $records, array $lapFields): array
     {
@@ -171,7 +171,7 @@ final class ActivityReader
         return array_values(array_filter(
             $records,
             static function (Record $r) use ($start, $end): bool {
-                $ts = $r->timestamp()?->getTimestamp();
+                $ts = $r->timestamp?->getTimestamp();
                 return $ts !== null && $ts >= $start && $ts <= $end;
             },
         ));

@@ -22,8 +22,8 @@ $binCnt = [];
 $minAlt = INF;
 $maxAlt = -INF;
 foreach ($session->records as $r) {
-    $d = $r->distance();
-    $a = $r->altitude();
+    $d = $r->distance;
+    $a = $r->altitude;
     if ($d === null || $a === null) {
         continue;
     }
@@ -54,8 +54,8 @@ for ($i = 1; $i < count($profile); $i++) {
 printf("Distance:        %.2f km\n", (end($profile)['dist'] ?? 0.0) / 1000.0);
 printf("Altitude:        %.1f m … %.1f m  (range %.1f m)\n", $minAlt, $maxAlt, $maxAlt - $minAlt);
 printf("Ascent/descent:  +%s m / -%s m   (from the session summary)\n",
-    $session->totalAscent() ?? '—',
-    $session->totalDescent() ?? '—',
+    $session->totalAscent ?? '—',
+    $session->totalDescent ?? '—',
 );
 printf("Steepest grade:  +%.1f%% climb / %.1f%% descent  (over %dm bins)\n\n", $maxUp, $maxDown, (int) $binMetres);
 

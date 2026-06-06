@@ -1,8 +1,7 @@
-/vendor/
-/composer.lock
 /build/
+/composer.lock
 /.phpunit.cache/
 /.phpunit.result.cache
-/resources/samples/*.fit
-/resources/mapbox-access-token.txt
-/resources/Profile.xlsx
+/resources/*
+/resources/samples/*
+/vendor/

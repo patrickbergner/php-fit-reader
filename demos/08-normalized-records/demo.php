@@ -18,7 +18,7 @@ printf("Normalized records: %d (continuous 1 second timeline, forward-filled)\n"
 
 // A normalized row mid-run: every field is carried forward, so nothing is null.
 $mid = $normalized[intdiv(count($normalized), 2)];
-printf("\nMid-run normalized record @ %s:\n", $mid->timestamp()?->format('H:i:s') ?? '—');
+printf("\nMid-run normalized record @ %s:\n", $mid->timestamp?->format('H:i:s') ?? '—');
 foreach ($mid->all() as $name => $value) {
     if ($value instanceof \DateTimeImmutable) {
         $value = $value->format('H:i:s');

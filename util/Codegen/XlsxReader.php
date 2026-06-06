@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Emontis\FitReader\Codegen;
+namespace Emontis\FitReader\Util\Codegen;
 
 /**
  * Minimal XLSX (OOXML) reader. Pulls each named sheet out as a 2-D array

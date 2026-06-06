@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Emontis\FitReader\Tests\Support\SyntheticFit\Scenarios;
+use Emontis\FitReader\Util\SyntheticFit\Scenarios;
 
 $map = [
     'casualWalk'              => 'casual-walk',

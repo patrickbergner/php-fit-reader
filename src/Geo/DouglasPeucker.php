@@ -29,9 +29,13 @@ final class DouglasPeucker
         $keep[$n - 1] = true;
 
         $tol2 = $toleranceDegrees * $toleranceDegrees;
-        $stack = [[0, $n - 1]];
-        while ($stack !== []) {
-            [$lo, $hi] = array_pop($stack);
+        // Parallel int stacks (rather than a stack of [lo, hi] tuples) so the
+        // element type stays cleanly `int` under static analysis.
+        $loStack = [0];
+        $hiStack = [$n - 1];
+        while ($loStack !== [] && $hiStack !== []) {
+            $lo = array_pop($loStack);
+            $hi = array_pop($hiStack);
             if ($hi - $lo < 2) {
                 continue;
             }
@@ -60,8 +64,10 @@ final class DouglasPeucker
             }
             if ($maxI !== -1 && $maxD2 > $tol2) {
                 $keep[$maxI] = true;
-                $stack[] = [$lo, $maxI];
-                $stack[] = [$maxI, $hi];
+                $loStack[] = $lo;
+                $hiStack[] = $maxI;
+                $loStack[] = $maxI;
+                $hiStack[] = $hi;
             }
         }
 

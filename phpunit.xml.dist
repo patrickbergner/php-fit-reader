@@ -20,7 +20,6 @@
         </include>
         <exclude>
             <directory>src/Profile/Generated</directory>
-            <directory>src/Codegen</directory>
         </exclude>
     </source>
 </phpunit>

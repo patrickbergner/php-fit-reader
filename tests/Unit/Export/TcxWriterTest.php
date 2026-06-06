@@ -16,7 +16,7 @@ final class TcxWriterTest extends TestCase
 {
     public function testProducesWellFormedTcxWithLapsAndTrackpoints(): void
     {
-        $xml   = (new TcxWriter())->toString(self::sampleActivity('running'));
+        $xml   = new TcxWriter()->toString(self::sampleActivity('running'));
         $xpath = self::xpath($xml);
 
         self::assertSame('Running', $xpath->evaluate('string(//t:Activity/@Sport)'));
@@ -38,7 +38,7 @@ final class TcxWriterTest extends TestCase
 
     public function testPowerAndSpeedGoIntoActivityExtensionNamespace(): void
     {
-        $xml   = (new TcxWriter())->toString(self::sampleActivity('cycling'));
+        $xml   = new TcxWriter()->toString(self::sampleActivity('cycling'));
         $xpath = self::xpath($xml);
 
         self::assertSame('Biking', $xpath->evaluate('string(//t:Activity/@Sport)'));
@@ -56,7 +56,7 @@ final class TcxWriterTest extends TestCase
             'speed_kmh' => 18.0, // → 5 m/s
         ]);
 
-        $xpath = self::xpath((new TcxWriter())->toString($activity));
+        $xpath = self::xpath(new TcxWriter()->toString($activity));
 
         self::assertSame(1, (int) $xpath->evaluate('count(//ax:TPX/ax:Speed)'));
         self::assertEqualsWithDelta(5.0, (float) $xpath->evaluate('string(//ax:TPX/ax:Speed)'), 0.001);
@@ -64,7 +64,7 @@ final class TcxWriterTest extends TestCase
 
     public function testUnmappedSportCollapsesToOtherButIsPreservedInNotes(): void
     {
-        $xml   = (new TcxWriter())->toString(self::sampleActivity('swimming'));
+        $xml   = new TcxWriter()->toString(self::sampleActivity('swimming'));
         $xpath = self::xpath($xml);
 
         self::assertSame('Other', $xpath->evaluate('string(//t:Activity/@Sport)'));
@@ -73,7 +73,7 @@ final class TcxWriterTest extends TestCase
 
     public function testEmitsDeviceCreatorFromFitData(): void
     {
-        $xpath = self::xpath((new TcxWriter())->toString(self::sampleActivity('running')));
+        $xpath = self::xpath(new TcxWriter()->toString(self::sampleActivity('running')));
 
         self::assertSame('Device_t', $xpath->evaluate('string(//t:Activity/t:Creator/@xsi:type)'));
         self::assertSame('Forerunner 255 Music', $xpath->evaluate('string(//t:Creator/t:Name)'));
@@ -90,7 +90,7 @@ final class TcxWriterTest extends TestCase
         // the source value rather than rounding 51.36898275 → 51.3689828.
         $activity = self::singleRecordActivity(['position' => new GeoPoint(51.36898275, 12.37027396)]);
 
-        $xpath = self::xpath((new TcxWriter())->toString($activity));
+        $xpath = self::xpath(new TcxWriter()->toString($activity));
         self::assertSame('51.36898275', $xpath->evaluate('string(//t:Trackpoint/t:Position/t:LatitudeDegrees)'));
         self::assertSame('12.37027396', $xpath->evaluate('string(//t:Trackpoint/t:Position/t:LongitudeDegrees)'));
     }
@@ -104,13 +104,13 @@ final class TcxWriterTest extends TestCase
             ['manufacturer' => 'garmin', 'product' => 3990, 'serial_number' => 3416986430],
         );
 
-        $xpath = self::xpath((new TcxWriter())->toString($activity));
+        $xpath = self::xpath(new TcxWriter()->toString($activity));
         self::assertSame('fr255_music', $xpath->evaluate('string(//t:Creator/t:Name)'));
     }
 
     public function testEmitsFitReaderAuthor(): void
     {
-        $xpath = self::xpath((new TcxWriter())->toString(self::sampleActivity('running')));
+        $xpath = self::xpath(new TcxWriter()->toString(self::sampleActivity('running')));
 
         self::assertSame('Application_t', $xpath->evaluate('string(//t:Author/@xsi:type)'));
         self::assertSame('emontis/fit-reader', $xpath->evaluate('string(//t:Author/t:Name)'));
@@ -122,7 +122,7 @@ final class TcxWriterTest extends TestCase
         // Empty file_id, no file_creator, no device_info → no identity to show.
         $activity = self::singleRecordActivity(['position' => new GeoPoint(52.51, 13.35)]);
 
-        $xpath = self::xpath((new TcxWriter())->toString($activity));
+        $xpath = self::xpath(new TcxWriter()->toString($activity));
         self::assertSame(0, (int) $xpath->evaluate('count(//t:Creator)'));
         self::assertSame(1, (int) $xpath->evaluate('count(//t:Author)'));
     }

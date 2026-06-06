@@ -6,7 +6,7 @@ They all use the same synthetic [`tiergarten-run.fit`](tiergarten-run.fit) file,
 
 ## Running (pun intended)
 
-Needs PHP 8.2 or newer. Run `composer install` in the root directory first.
+Needs PHP 8.4 or newer. Run `composer install` in the root directory first.
 
 Run the `demo.php` in any directory or all of them at once with the `run.sh` in this directory.
 

@@ -17,39 +17,39 @@ demo_title('06', 'Sensor detail — every typed reading on a Record');
 // First record that carries the full set (GPS + chest strap + running footpod).
 $r = $session->records[0];
 foreach ($session->records as $rec) {
-    if ($rec->position() !== null && $rec->heartRate() !== null && $rec->verticalOscillation() !== null) {
+    if ($rec->position !== null && $rec->heartRate !== null && $rec->verticalOscillation !== null) {
         $r = $rec;
         break;
     }
 }
 
 $f   = static fn (mixed $v, string $unit = ''): string => $v === null ? '—' : trim($v . ' ' . $unit);
-$pos = $r->position();
+$pos = $r->position;
 
-printf("Record @ %s\n\n", $r->timestamp()?->format('H:i:s') ?? '—');
+printf("Record @ %s\n\n", $r->timestamp?->format('H:i:s') ?? '—');
 
 echo "Position & motion\n";
 printf("  position           %s\n", $pos !== null ? sprintf('%.5f, %.5f', $pos->lat, $pos->lng) : '—');
-printf("  altitude           %s\n", $f($r->altitude(), 'm'));
-printf("  speed              %s\n", $f($r->speed(), 'm/s'));
-printf("  distance           %s\n", $f($r->distance(), 'm'));
+printf("  altitude           %s\n", $f($r->altitude, 'm'));
+printf("  speed              %s\n", $f($r->speed, 'm/s'));
+printf("  distance           %s\n", $f($r->distance, 'm'));
 
 echo "\nCore sensors\n";
-printf("  heart rate         %s\n", $f($r->heartRate(), 'bpm'));
-printf("  cadence            %s\n", $f($r->cadence(), 'spm'));
-printf("  power              %s\n", $f($r->power(), 'W'));
-printf("  temperature        %s\n", $f($r->temperature(), '°C'));
-printf("  GPS accuracy       %s\n", $f($r->gpsAccuracy(), 'm'));
+printf("  heart rate         %s\n", $f($r->heartRate, 'bpm'));
+printf("  cadence            %s\n", $f($r->cadence, 'spm'));
+printf("  power              %s\n", $f($r->power, 'W'));
+printf("  temperature        %s\n", $f($r->temperature, '°C'));
+printf("  GPS accuracy       %s\n", $f($r->gpsAccuracy, 'm'));
 
 echo "\nRunning dynamics\n";
-printf("  vertical oscillation %s\n", $f($r->verticalOscillation(), 'mm'));
-printf("  stance time          %s\n", $f($r->stanceTime(), 'ms'));
-printf("  stance time pct      %s\n", $f($r->stanceTimePercent(), '%'));
-printf("  stance balance L/R   %s\n", $f($r->stanceTimeBalance(), '%'));
-printf("  vertical ratio       %s\n", $f($r->verticalRatio(), '%'));
-printf("  step length          %s\n", $f($r->stepLength(), 'mm'));
-printf("  fractional cadence   %s\n", $f($r->fractionalCadence(), 'rpm'));
-printf("  respiration rate     %s\n", $f($r->respirationRate(), 'brpm'));
+printf("  vertical oscillation %s\n", $f($r->verticalOscillation, 'mm'));
+printf("  stance time          %s\n", $f($r->stanceTime, 'ms'));
+printf("  stance time pct      %s\n", $f($r->stanceTimePercent, '%'));
+printf("  stance balance L/R   %s\n", $f($r->stanceTimeBalance, '%'));
+printf("  vertical ratio       %s\n", $f($r->verticalRatio, '%'));
+printf("  step length          %s\n", $f($r->stepLength, 'mm'));
+printf("  fractional cadence   %s\n", $f($r->fractionalCadence, 'rpm'));
+printf("  respiration rate     %s\n", $f($r->respirationRate, 'brpm'));
 
 echo "\nDeveloper (Connect IQ) field\n";
 printf("  Leg Spring Stiffness %s\n", $f($r->developerField('Leg Spring Stiffness'), 'kN/m'));

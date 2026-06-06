@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Emontis\FitReader\Codegen;
+namespace Emontis\FitReader\Util\Codegen;
 
 use Emontis\FitReader\Protocol\BaseType;
 

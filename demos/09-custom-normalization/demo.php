@@ -34,12 +34,12 @@ printf("%-10s %-5s %-7s %-8s %-5s %s\n", 'Time', 'HR', 'km/h', 'min/km', 'Cad', 
 foreach (array_slice($rows, 0, 15) as $r) {
     printf(
         "%-10s %-5s %-7s %-8s %-5s %s\n",
-        $r->timestamp()?->format('H:i:s') ?? '—',
-        $r->heartRate() ?? '—',
+        $r->timestamp?->format('H:i:s') ?? '—',
+        $r->heartRate ?? '—',
         number_format((float) ($r->field('speed_kmh') ?? 0.0), 1),
         number_format((float) ($r->field('pace_min_per_km') ?? 0.0), 2),
-        $r->cadence() ?? '—',
-        number_format((float) ($r->altitude() ?? 0.0), 1),
+        $r->cadence ?? '—',
+        number_format((float) ($r->altitude ?? 0.0), 1),
     );
 }
 printf("… (%d rows total at a 30 s step)\n", count($rows));

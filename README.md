@@ -10,7 +10,7 @@ Convenience exporters to other formats are included as well (CSV, GPX 1.1, KML 2
 
 **FIT** is the binary container Garmin bike computers, GPS watches, indoor trainers and other equipment write out. A single `.fit` file can hold a GPS track, sensor readings (heart rate, cadence, power, temperature, …), laps, events, device info, and a summary — all in one binary stream.
 
-Strava, Garmin Connect, RideWithGPS, TrainingPeaks and many other fitness platforms and tools talk FIT as well. This library decodes it in PHP with PHPStan level 8 compliance.
+Strava, Garmin Connect, RideWithGPS, TrainingPeaks and many other fitness platforms and tools talk FIT as well. This library decodes it in PHP with PHPStan **level 10** compliance.
 
 ## Install
 
@@ -18,7 +18,7 @@ Strava, Garmin Connect, RideWithGPS, TrainingPeaks and many other fitness platfo
 composer require emontis/fit-reader
 ```
 
-Requires PHP 8.2+ and nothing else to read FIT into PHP objects, analyze and work with them, and/or export to CSV or GeoJSON.
+Requires PHP 8.4+ and nothing else to read FIT into PHP objects, analyze and work with them, and/or export to CSV or GeoJSON.
 
 The GPX/KML/TCX exporters additionally need the `xmlwriter` extension. The Mapbox PNG generator uses the `curl` extension.
 
@@ -28,7 +28,7 @@ The GPX/KML/TCX exporters additionally need the `xmlwriter` extension. The Mapbo
 use Emontis\FitReader\FitReader;
 
 $activity = FitReader::activity('ride.fit');
-echo $activity->sessions[0]->sport(), "\n";
+echo $activity->sessions[0]->sport, "\n";
 // >> "cycling"
 ```
 
@@ -47,17 +47,17 @@ Returns the full typed [`Activity`](src/Activity/Activity.php) in memory. Best f
 ```php
 foreach (FitReader::activity('ride.fit')->sessions as $session) {
     printf("%s: %.1f km in %.0f min\n",
-        $session->sport(),
-        $session->totalDistance() / 1000.0,
-        $session->totalTimerTime() / 60.0,
+        $session->sport,
+        $session->totalDistance / 1000.0,
+        $session->totalTimerTime / 60.0,
     );
 
     foreach ($session->records as $r) {
         printf("  %s  %.5f,%.5f  hr=%s\n",
-            $r->timestamp()->format('H:i:s'),
-            $r->position()->lat ?? '—',
-            $r->position()->lng ?? '—',
-            $r->heartRate() ?? '—',
+            $r->timestamp->format('H:i:s'),
+            $r->position->lat ?? '—',
+            $r->position->lng ?? '—',
+            $r->heartRate ?? '—',
         );
     }
 }
@@ -138,9 +138,9 @@ $normalizer = FitReader::normalizer(
 
 foreach ($normalizer->normalize($activity->sessions[0]->records) as $r) {
     printf("%s  %s km/h  hr=%s\n",
-        $r->timestamp()->format('H:i:s'),
+        $r->timestamp->format('H:i:s'),
         $r->field('speed_kmh') ?? '—',
-        $r->heartRate() ?? '—',
+        $r->heartRate ?? '—',
     );
 }
 ```
@@ -192,8 +192,8 @@ After reading the data, compute best efforts, lap pace, training load, climbing,
 ```php
 $session = FitReader::activity('run.fit')->sessions[0];
 foreach ($session->records as $r) {
-    $dist[] = $r->distance();                       // cumulative metres
-    $time[] = $r->timestamp()->getTimestamp();      // seconds
+    $dist[] = $r->distance;                       // cumulative metres
+    $time[] = $r->timestamp->getTimestamp();      // seconds
 }
 // slide a window over $dist/$time to find the min time covering ≥ N metres
 ```
@@ -202,7 +202,7 @@ foreach ($session->records as $r) {
 
 ```php
 foreach ($session->recordsNormalized() as $r) {
-    $zone = zoneFor($r->heartRate(), $session->maxHeartRate());
+    $zone = zoneFor($r->heartRate, $session->maxHeartRate);
     $timeInZone[$zone]++; // one second per record on the normalized timeline
 }
 ```
@@ -418,7 +418,7 @@ What's in scope today:
 
 What isn't:
 
-- **No FIT writer.** A small writer exists under `tests/Support/SyntheticFit/` to generate test fixtures, but it's intentionally test-scoped and not part of the public API.
+- **No FIT writer.** A small writer exists under `util/SyntheticFit/` to generate test fixtures, but it's intentionally part of the public API.
 - **Course, workout, monitoring, and other FIT file kinds** parse fine via the streaming `messages()` API but aren't projected into a typed object.
 - **64-bit PHP only** (`PHP_INT_SIZE = 8`). Big-endian definition messages are supported per the per-definition architecture byte. `uint64` values above `PHP_INT_MAX` are surfaced as strings.
 
@@ -472,12 +472,22 @@ bin/generate-default-samples
 
 Writes deterministic `.fit` test cases into `samples/default/` from a scenario builder. Re-run after scenario changes.
 
-### Running tests
+### Running static code analysis
 
 ```bash
-run-tests.sh                          # full suite
-run-tests.sh --testsuite unit         # unit tests only
-run-tests.sh --testsuite integration  # integration tests only
+composer analyze
+```
+
+### Running unit tests
+
+```bash
+composer test
+```
+
+### Running integration tests
+
+```bash
+bin/run-integration-tests
 ```
 
 Produces under `build/`:
@@ -494,4 +504,4 @@ Produces under `build/`:
 
 - Public API lives on [`FitReader`](src/FitReader.php) — add new entry points there.
 - New exporters belong under [`src/Export`](src/Export/).
-- Run `composer analyse` (PHPStan, level 8) and the test suite (PHPUnit) before pushing.
+- Run static code analysis and the test suite before pushing.

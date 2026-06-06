@@ -10,10 +10,10 @@ $activity = FitReader::activity(DEMO_FIT_PATH);
 
 demo_title('04', 'Activity overview — metadata, devices, events');
 
-printf("Manufacturer: %s\n", $activity->manufacturer() ?? '—');
-printf("Created:      %s\n", $activity->timeCreated()?->format('c') ?? '—');
-printf("Sessions:     %d\n", $activity->numSessions());
-printf("Total timer:  %.0f min\n", ($activity->totalTimerTime() ?? 0.0) / 60.0);
+printf("Manufacturer: %s\n", $activity->manufacturer ?? '—');
+printf("Created:      %s\n", $activity->timeCreated?->format('c') ?? '—');
+printf("Sessions:     %d\n", $activity->numSessions);
+printf("Total timer:  %.0f min\n", ($activity->totalTimerTime ?? 0.0) / 60.0);
 
 printf("\nDevice-info messages: %d\n", count($activity->deviceInfos));
 foreach ($activity->deviceInfos as $dev) {
